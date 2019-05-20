@@ -63,4 +63,11 @@ def generate_lunarlander_data(
         dones=dones, observations=observations
     )
 
-generate_lunarlander_data()
+
+'''
+If run directly this will generate the data 
+needed to run all LunarLander-v2 experiments
+'''
+
+if __name__ == "main":
+    generate_lunarlander_data()
