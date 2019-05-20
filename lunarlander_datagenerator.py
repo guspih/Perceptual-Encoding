@@ -69,5 +69,5 @@ If run directly this will generate the data
 needed to run all LunarLander-v2 experiments
 '''
 
-if __name__ == "main":
+if __name__ == "__main__":
     generate_lunarlander_data()
