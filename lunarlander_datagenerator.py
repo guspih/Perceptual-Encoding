@@ -58,7 +58,9 @@ def generate_lunarlander_data(
             actions.append(action)
     np.savez(
         save_file, 
-        parameters=np.array([rollouts, timesteps_per_rollout, image_size]),
+        parameter_rollouts=rollouts, 
+        parameter_timesteps_per_rollout=timesteps_per_rollout,
+        parameter_image_size=[image_size[0],image_size[1]],
         imgs=imgs, rewards=rewards, actions=actions, 
         dones=dones, observations=observations
     )

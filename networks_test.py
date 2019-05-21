@@ -1,4 +1,3 @@
-import vae
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -8,7 +7,7 @@ from skimage import color
 import math
 
 
-DATA_FILE = "LunarLander-v2_150000.npz" #An npz containing 64x64x3 images in entry "imgs"
+DATA_FILE = "LunarLander-v2_105000_Dataset.npz" #An npz containing 64x64x3 images in entry "imgs"
 SAVE_FILE = "gamma_exp.pt"  #Where to save the trained model (saved each epoch)
 LOAD_FILE = None  #From where to load an already trained model. If None, no model will be loaded
 
@@ -23,7 +22,6 @@ GAMMA = 0.01
 data = np.load(DATA_FILE)
 data = data["imgs"][:50000]
 np.random.shuffle(data)
-data = np.true_divide(np.array(data), 255)
 data = np.array(data, dtype=np.float32)
 data = np.transpose(data, (0,3,1,2))
 data = np.split(data, data.shape[0]/BATCH_SIZE)
