@@ -5,6 +5,7 @@ import random
 from networks import CVAE_64x64, run_epoch
 from skimage import color
 import math
+import datetime
 
 def show(imgs, block=False, heading="Figure"):
     '''
@@ -88,61 +89,119 @@ def load_npz_image_data(data_file, data_size, batch_size,
 
     return train_data, test_data
 
+def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
+    validation_split, z_dimensions=32, variational=False, gamma=0.001,
+    perceptual_loss=False, load_file=None, gpu=False, display=False
+):
+    '''
+    Trains an autoencoder with data from a specified .npz file
 
+    Args:
+        data_file (str): Path to the .npz file with images stored with key "imgs"
+        network (f()->nn.Module): Class of network to train
+        epochs (int): Number of epochs to run
+        data_size (int): Number of images from the data to train on
+        batch_size (int): Number of images per batch
+        validation_split (float): Fraction of batches for validation
+        z_dimensions (int): Number of latent dimensions for encoding
+        variational (bool): Whether to train the network as a variational AE
+        gamma (float): Weight of the KLD loss in training variational AE
+        perceptual_loss (bool): Whether to train with pereptual or pixelwise error
+        load_file (str / None): Path for loading models, overrides parameters
+        gpu (bool): Whether to train on the GPU
+        display (bool): Whether to display the recreated images
 
-DATA_FILE = "LunarLander-v2_105000_Dataset.npz" #An npz containing 64x64x3 images in entry "imgs"
-SAVE_FILE = "network_test.pt"  #Where to save the trained model (saved each epoch)
-LOAD_FILE = None  #From where to load an already trained model. If None, no model will be loaded
-GPU = False #Whether to run on the GPUs
-
-EPOCHS = 50
-BATCH_SIZE = 100
-
-Z_DIMS = 32
-PERCEPTUAL_LOSS = False
-VARIATIONAL = True #Whether the autoencoder is variational
-GAMMA = 0.01
-
-
-data, validation_data = load_npz_image_data(
-    DATA_FILE, 60000, BATCH_SIZE, test_split=0.2, shuffle=True, gpu=GPU
-)
-
-if not LOAD_FILE is None:
-    model = torch.load(LOAD_FILE)
-else:
-    model = model = CVAE_64x64(
-        z_dimensions=Z_DIMS,
-        variational=VARIATIONAL,
-        gamma=GAMMA,
-        perceptual_loss=PERCEPTUAL_LOSS
-    )
-if GPU:
-    model = model.cuda()
-
-optimizer = torch.optim.Adam(model.parameters())
-
-for epoch in range(EPOCHS):
-    np.random.shuffle(data)
-    training_losses = run_epoch(
-        model, data, data, model.loss, optimizer,
-        "Epoch {}".format(epoch), train=True
+        Returns: (nn.Module)
+    '''
+    data, validation_data = load_npz_image_data(
+        data_file, data_size, batch_size, test_split=0.2, shuffle=True, gpu=gpu
     )
 
-    validation_losses = run_epoch(
-        model, validation_data, validation_data, model.loss, None,
-        "Validation {}".format(epoch), train=False
-    )
-
-    print(
-        "EPOCH: {}, TRAINING LOSS: {} VALIDATION LOSS: {}".format(
-            epoch, training_losses, validation_losses
+    if not load_file is None:
+        model = torch.load(load_file)
+    else:
+        model = network(
+            z_dimensions=z_dimensions,
+            variational=variational,
+            gamma=gamma,
+            perceptual_loss=perceptual_loss
         )
+    if gpu:
+        model = model.cuda()
+
+    save_file = "AE_{}_{}_{}_{}.pt".format(
+        data_file, z_dimensions, gamma,
+        datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
     )
+    if variational:
+        save_file = "V"+save_file
+    if perceptual_loss:
+        save_file = "Perceptual_"+save_file
+
+    optimizer = torch.optim.Adam(model.parameters())
+
+    for epoch in range(epochs):
+        np.random.shuffle(data)
+        training_losses = run_epoch(
+            model, data, data, model.loss, optimizer,
+            "Epoch {}".format(epoch), train=True
+        )
+
+        validation_losses = run_epoch(
+            model, validation_data, validation_data, model.loss, None,
+            "Validation {}".format(epoch), train=False
+        )
+
+        print(
+            "EPOCH: {}, TRAINING LOSS: {} VALIDATION LOSS: {}".format(
+                epoch, training_losses, validation_losses
+            )
+        )
+        
+        torch.save(model.cpu(), save_file)
+        if gpu:
+            model.cuda()
+        if display:
+            show_recreation(data, model, epoch=epoch, batch=0, block=False)
+    if display:
+        for batch_id in range(len(data)):
+            show_recreation(data, model, epoch=epochs, batch=batch_id, block=True)
     
-    torch.save(model, SAVE_FILE)
+    return model
 
-    show_recreation(data, model, epoch=epoch, batch=0, block=False)
+'''
+If run directly this will train an autoencoder on the lunarlander dataset
 
-for batch_id in range(len(data)):
-    show_recreation(data, model, epoch=EPOCHS, batch=batch_id, block=True)
+Parameters:
+        DATA_FILE (str): Path to the .npz file with images stored with key "imgs"
+        EPOCHS (int): Number of epochs to run
+        DATA_SIZE (int): Number of images from the data to train on
+        BATCH_SIZE (int): Number of images per batch
+        VALIDATION_SPLIT (float): Fraction of batches for validation
+        Z_DIMENSIONS (int): Number of latent dimensions for encoding
+        VARIATIONAL (bool): Whether to train the network as a variational AE
+        GAMMA (float): Weight of the KLD loss in training variational AE
+        PERCEPTUAL_LOSS (bool): Whether to train with pereptual or pixelwise error
+        LOAD_FILE (str / None): Path for loading models, overrides parameters
+        GPU (bool): Whether to train on the GPU
+'''
+
+if __name__ == "__main__":
+
+    DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
+    EPOCHS = 50
+    DATA_SIZE = 50000
+    BATCH_SIZE = 1000
+    VALIDATION_SPLIT = 0.2
+    Z_DIMENSIONS = 32
+    VARIATIONAL = False
+    GAMMA = 0.001
+    PERCEPTUAL_LOSS = False
+    LOAD_FILE = None 
+    GPU = False
+
+train_npz_autoencoder(
+    DATA_FILE, CVAE_64x64, EPOCHS, DATA_SIZE,
+    BATCH_SIZE, VALIDATION_SPLIT, Z_DIMENSIONS, VARIATIONAL,
+    GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU
+)

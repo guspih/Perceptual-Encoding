@@ -16,8 +16,8 @@ def _create_coder(channels, kernel_sizes,
         channels ([int]): Channel sizes per layer. 1 more than layers
         kernel_sizes ([int]): Kernel sizes per layer
         strides ([int]): Strides per layer
-        conv_types ([type]/type): Type of the convoultion module per layer
-        activation_types ([type]/type): Type of activation function per layer
+        conv_types ([f()->type]): Type of the convoultion module per layer
+        activation_types ([f()->type]): Type of activation function per layer
     
     Returns: (nn.Sequential) The created coder
     '''
