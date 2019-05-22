@@ -169,24 +169,24 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
     
     return model
 
-'''
-If run directly this will train an autoencoder on the lunarlander dataset
-
-Parameters:
-        DATA_FILE (str): Path to the .npz file with images stored with key "imgs"
-        EPOCHS (int): Number of epochs to run
-        DATA_SIZE (int): Number of images from the data to train on
-        BATCH_SIZE (int): Number of images per batch
-        VALIDATION_SPLIT (float): Fraction of batches for validation
-        Z_DIMENSIONS (int): Number of latent dimensions for encoding
-        VARIATIONAL (bool): Whether to train the network as a variational AE
-        GAMMA (float): Weight of the KLD loss in training variational AE
-        PERCEPTUAL_LOSS (bool): Whether to train with pereptual or pixelwise error
-        LOAD_FILE (str / None): Path for loading models, overrides parameters
-        GPU (bool): Whether to train on the GPU
-'''
-
 if __name__ == "__main__":
+    '''
+    If run directly this will train an autoencoder on the lunarlander dataset
+
+    Parameters:
+            DATA_FILE (str): Path to the .npz file with images stored with key "imgs"
+            EPOCHS (int): Number of epochs to run
+            DATA_SIZE (int): Number of images from the data to train on
+            BATCH_SIZE (int): Number of images per batch
+            VALIDATION_SPLIT (float): Fraction of batches for validation
+            Z_DIMENSIONS (int): Number of latent dimensions for encoding
+            VARIATIONAL (bool): Whether to train the network as a variational AE
+            GAMMA (float): Weight of the KLD loss in training variational AE
+            PERCEPTUAL_LOSS (bool): Whether to train with pereptual or pixelwise error
+            LOAD_FILE (str / None): Path for loading models, overrides parameters
+            GPU (bool): Whether to train on the GPU
+            DISPLAY (bool): Whether to display the recreated images
+    '''
 
     DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
     EPOCHS = 50
@@ -199,9 +199,10 @@ if __name__ == "__main__":
     PERCEPTUAL_LOSS = False
     LOAD_FILE = None 
     GPU = False
+    DISPLAY = True
 
 train_npz_autoencoder(
     DATA_FILE, CVAE_64x64, EPOCHS, DATA_SIZE,
     BATCH_SIZE, VALIDATION_SPLIT, Z_DIMENSIONS, VARIATIONAL,
-    GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU
+    GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU, DISPLAY
 )

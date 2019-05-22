@@ -66,10 +66,9 @@ def generate_lunarlander_data(
     )
 
 
-'''
-If run directly this will generate the data 
-needed to run all LunarLander-v2 experiments
-'''
-
 if __name__ == "__main__":
+    '''
+    If run directly this will generate the data 
+    needed to run all LunarLander-v2 experiments
+    '''
     generate_lunarlander_data()
