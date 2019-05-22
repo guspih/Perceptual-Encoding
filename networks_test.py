@@ -67,7 +67,7 @@ def load_npz_image_data(data_file, data_size, batch_size,
     '''
     assert data_size % batch_size == 0, \
         "data_size must be divisble by batch_size"
-
+    print("Loading data from {}...".format(data_file))
     data = np.load(data_file)
     data = data["imgs"][:data_size]
     if shuffle:
