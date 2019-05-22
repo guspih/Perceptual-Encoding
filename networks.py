@@ -46,7 +46,9 @@ def _create_coder(channels, kernel_sizes,
 
     return coder
 
-def train_epoch(network, data, labels, loss, optimizer, epoch_name = "Epoch"):
+def run_epoch(network, data, labels, loss, optimizer,
+    epoch_name="Epoch", train=True
+):
     '''
     Trains a given network for one epoch
 
@@ -54,28 +56,40 @@ def train_epoch(network, data, labels, loss, optimizer, epoch_name = "Epoch"):
         network (nn.Module): The network to be trained
         data ([tensor]): List of the batches of data to train on
         labels ([tensor]): List of the batches of labels to target
-        loss (function): Function that takes network output and data and
-                         returns a list where the loss is the first element
-        optimizer (optim.Optimizer): Optimizer for network
+        loss (f(tensor, tensor)->[tensor]): Loss calculation function
+        optimizer (optim.Optimizer): Optimizer for use in training
         epoch_name (str): Name of the epoch (usually a number)
+        train (bool): Whether to run this epoch to train or just to evaluate
     
     Returns: (float) The sum of loss of the epoch
     '''
-    
-    network.train()
+    if train:
+        network.train()
     batches = list(zip(data, labels))
-    epoch_loss = 0
+    epoch_losses = []
     for batch_id, (batch_data, batch_labels) in enumerate(batches):
-        optimizer.zero_grad()
+        if train:
+            optimizer.zero_grad()
         output = network(batch_data)
-        losses = loss(output, batch_labels) 
-        epoch_loss = epoch_loss + losses[0]
-        losses[0].backward()
-        optimizer.step()
-        print("\r{} - [{}/{}] - Losses: {}".format(epoch_name, batch_id+1, len(batches), ["{0:.5f}".format(l.item()) for l in losses]),end="")
+        losses = loss(output, batch_labels)
+        if batch_id == 0:
+            epoch_losses = losses
+        else:
+            epoch_losses = [
+                epoch_losses[i] + losses[i] for i in range(len(losses))
+            ]
+        if train:
+            losses[0].backward()
+            optimizer.step()
+        print(
+            "\r{} - [{}/{}] - Losses: {}".format(
+                epoch_name, batch_id+1, len(batches),
+                ["{0:.5f}".format(l.item()) for l in losses]
+            ),end=""
+        )
     print()
 
-    return epoch_loss
+    return epoch_losses
 
 
 class CVAE_64x64(nn.Module):
