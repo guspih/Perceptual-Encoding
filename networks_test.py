@@ -140,6 +140,8 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
 
     optimizer = torch.optim.Adam(model.parameters())
 
+    best_validation_loss = float("inf")
+
     for epoch in range(epochs):
         np.random.shuffle(data)
         training_losses = run_epoch(
@@ -158,7 +160,10 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
             )
         )
         
-        torch.save(model.cpu(), save_file)
+        if validation_losses[0] < best_validation_loss:
+            torch.save(model.cpu(), save_file)
+            best_validation_loss = validation_losses[0]
+        
         if gpu:
             model.cuda()
         if display:

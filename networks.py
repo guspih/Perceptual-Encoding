@@ -4,7 +4,7 @@ import numpy as np
 import torchvision.models as models
 from torch.nn import functional as F
 import torch.nn as nn
-
+import time
 
 def _create_coder(channels, kernel_sizes,
     strides, conv_types, activation_types
@@ -63,6 +63,8 @@ def run_epoch(network, data, labels, loss, optimizer,
     
     Returns: (float) The sum of loss of the epoch
     '''
+    start_time = time.time()
+
     if train:
         network.train()
     batches = list(zip(data, labels))
@@ -82,9 +84,10 @@ def run_epoch(network, data, labels, loss, optimizer,
             losses[0].backward()
             optimizer.step()
         print(
-            "\r{} - [{}/{}] - Losses: {}".format(
+            "\r{} - [{}/{}] - Losses: {}, Time passed: {}s".format(
                 epoch_name, batch_id+1, len(batches),
-                ["{0:.5f}".format(l.item()) for l in losses]
+                str(["{0:.5f}".format(l.item()) for l in losses]),
+                "{0:.1f}".format(time.time()-start_time)
             ),end=""
         )
     print()
