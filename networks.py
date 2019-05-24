@@ -6,8 +6,8 @@ from torch.nn import functional as F
 import torch.nn as nn
 import time
 
-def _create_coder(channels, kernel_sizes,
-    strides, conv_types, activation_types
+def _create_coder(channels, kernel_sizes, strides,
+    conv_types, activation_types, paddings = (0,0)
 ):
     '''
     Function that creates en- or decoders based on parameters
@@ -18,6 +18,7 @@ def _create_coder(channels, kernel_sizes,
         strides ([int]): Strides per layer
         conv_types ([f()->type]): Type of the convoultion module per layer
         activation_types ([f()->type]): Type of activation function per layer
+        paddings ([(int, int)]): The padding per layer
     
     Returns: (nn.Sequential) The created coder
     '''
@@ -26,6 +27,10 @@ def _create_coder(channels, kernel_sizes,
 
     if not isinstance(activation_types, list):
         activation_types = [activation_types for _ in range(len(kernel_sizes))]
+
+    if not isinstance(paddings, list):
+        paddings = [paddings for _ in range(len(kernel_sizes))]
+
 
     coder = nn.Sequential()
     for layer in range(len(channels)-1):
@@ -218,3 +223,28 @@ class AlexNet(nn.Module):
         x = x.view(x.size(0), -1)
         return x
 
+def dense_net(input_size, layers, activation_functions):
+    '''
+    Creates a simple dense network
+
+    Args:
+        input_size (int): Input size to the network
+        layers ([int]): Layer sizes
+        activation_functions ([f()->nn.Module]): class of activation functions
+    
+    Returns: nn.Sequential
+    '''
+
+    network = nn.Sequential()
+    network.add_module(input_size, layers[0])
+    for layer_id in range(len(layers)-1):
+        network.add_module(
+            'linear{}'.format(layer_id),
+            nn.Linear(layers[layer_id], layers[layer_id+1])
+        )
+        if not activation_functions[layer_id] is None:
+            network.add_module(
+                'activation{}'.format(layer_id),
+                activation_functions[layer_id]()
+            )
+    return network

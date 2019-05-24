@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import torch
 import random
 from networks import CVAE_64x64, run_epoch
-from skimage import color
 import math
 import datetime
 
@@ -49,18 +48,19 @@ def show_recreation(data, model, epoch=0, batch=0, block=False):
         heading="Random image from: Epoch {}, Batch {}".format(epoch, batch)
     )
 
-def load_npz_image_data(data_file, data_size, batch_size,
-    test_split=0.2, shuffle=True, gpu=False
+def load_npz_data(data_file, data_size, batch_size,
+    test_split=0.2, gpu=False
 ):
     '''
-    Loads images from key 'imgs' from an .npz file
+    Loads data from an .npz file
+    If the data can be turned into a torch tensor, it will
+    Anything in key 'imgs' will be loaded as images
 
     Args:
         data_file (str): Path to file with data
         data_size (int): Amount of images to load
         batch_size (int): How much data will be stored in each batch
         test_split (float): What portion of batches to use for testing
-        shuffle (bool): Whether to shuffle the data
         gpu (bool): Whether data will be used on the GPU
 
     Returns: ([tensor],[tensor])
@@ -69,23 +69,33 @@ def load_npz_image_data(data_file, data_size, batch_size,
         "data_size must be divisble by batch_size"
     print("Loading data from {}...".format(data_file))
     data = np.load(data_file)
-    data = data["imgs"][:data_size]
-    if shuffle:
-        np.random.shuffle(data)
-    data = np.array(data, dtype=np.float32)
-    data = np.transpose(data, (0,3,1,2))
-    data = np.split(data, data.shape[0]/batch_size)
-    data = [torch.from_numpy(batch) for batch in data]
-    if gpu:
-        data = [batch.cuda() for batch in data]
-
-    train_data = []
-    test_data = []
-    for batch in data:
-        if len(train_data)/len(data) < 1-test_split:
-            train_data.append(batch)
+    
+    for key, value in data:
+        if key == "imgs":
+            value = value[:data_size]
+            value = np.array(value, dtype=np.float32)
+            value = np.transpose(value, (0,3,1,2))
+            value = np.split(value, value.shape[0]/batch_size)
         else:
-            test_data.append(batch)
+            value = value[:data_size]
+            value = np.split(data, data.shape[0]/batch_size)
+        if isinstance(value[0], np.ndarray):
+            value = [torch.from_numpy(batch) for batch in value]
+            if gpu:
+                value = [batch.cuda() for batch in value]
+        
+        data[key] = value
+
+    train_data = {}
+    test_data = {}
+    for key, value in data:
+        train_data[key] = []
+        test_data[key] = []
+        for batch in value:
+            if len(train_data)/len(data) < 1-test_split:
+                train_data[key].append(batch)
+            else:
+                test_data[key].append(batch)
 
     return train_data, test_data
 
@@ -113,9 +123,11 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
 
         Returns: (nn.Module)
     '''
-    data, validation_data = load_npz_image_data(
-        data_file, data_size, batch_size, test_split=0.2, shuffle=True, gpu=gpu
+    data, validation_data = load_npz_data(
+        data_file, data_size, batch_size, test_split=0.2, gpu=gpu
     )
+    data = data["imgs"]
+    validation_data = validation_data["imgs"]
 
     if not load_file is None:
         model = torch.load(load_file)
