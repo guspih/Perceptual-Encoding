@@ -93,6 +93,8 @@ def load_npz_data(data_file, data_size, batch_size,
     train_data = {}
     test_data = {}
     for key, value in data.items():
+        if key[:9] == "parameter":
+            continue
         train_data[key] = []
         test_data[key] = []
         for batch in value:
