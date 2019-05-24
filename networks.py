@@ -188,7 +188,7 @@ class CVAE_64x64(nn.Module):
         else:
             KLD = torch.tensor([0.0])
             if REC.is_cuda:
-                KLD.cuda()
+                KLD = KLD.cuda()
 
         return REC + self.gamma*KLD, REC, KLD
 

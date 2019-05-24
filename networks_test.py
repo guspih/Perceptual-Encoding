@@ -150,7 +150,7 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
         )
 
         validation_losses = run_epoch(
-            model, validation_data, validation_data, model.loss, None,
+            model, validation_data, validation_data, model.loss, optimizer,
             "Validation {}".format(epoch), train=False
         )
 
