@@ -70,7 +70,7 @@ def load_npz_data(data_file, data_size, batch_size,
     print("Loading data from {}...".format(data_file))
     data = np.load(data_file)
     
-    for key, value in data:
+    for key, value in data.items():
         if key == "imgs":
             value = value[:data_size]
             value = np.array(value, dtype=np.float32)
@@ -88,7 +88,7 @@ def load_npz_data(data_file, data_size, batch_size,
 
     train_data = {}
     test_data = {}
-    for key, value in data:
+    for key, value in data.items():
         train_data[key] = []
         test_data[key] = []
         for batch in value:
