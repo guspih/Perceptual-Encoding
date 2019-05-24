@@ -130,7 +130,7 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
         Returns: (nn.Module)
     '''
     data, validation_data = load_npz_data(
-        data_file, data_size, batch_size, test_split=0.2, gpu=gpu
+        data_file, data_size, batch_size, validation_split, gpu=gpu
     )
     data = data["imgs"]
     validation_data = validation_data["imgs"]
