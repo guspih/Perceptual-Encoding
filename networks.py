@@ -67,21 +67,24 @@ def run_epoch(network, data, labels, loss, optimizer,
 
     if train:
         network.train()
+    else:
+        network.eval()
     batches = list(zip(data, labels))
     epoch_losses = []
     for batch_id, (batch_data, batch_labels) in enumerate(batches):
-        if train:
-            optimizer.zero_grad()
+        optimizer.zero_grad()
         output = network(batch_data)
         losses = loss(output, batch_labels)
         if batch_id == 0:
-            epoch_losses = losses
+            epoch_losses = [
+                loss.item() for loss in losses
+            ]
         else:
             epoch_losses = [
                 epoch_losses[i] + losses[i] for i in range(len(losses))
             ]
+        losses[0].backward()
         if train:
-            losses[0].backward()
             optimizer.step()
         print(
             "\r{} - [{}/{}] - Losses: {}, Time passed: {}s".format(
@@ -184,7 +187,9 @@ class CVAE_64x64(nn.Module):
             KLD = -1 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
         else:
             KLD = torch.tensor([0.0])
-        
+            if REC.is_cuda:
+                KLD.cuda()
+
         return REC + self.gamma*KLD, REC, KLD
 
 
