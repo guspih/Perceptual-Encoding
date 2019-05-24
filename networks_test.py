@@ -55,6 +55,7 @@ def load_npz_data(data_file, data_size, batch_size,
     Loads data from an .npz file
     If the data can be turned into a torch tensor, it will
     Anything in key 'imgs' will be loaded as images
+    Keys starting with 'parameter' will disregared
 
     Args:
         data_file (str): Path to file with data
@@ -76,7 +77,7 @@ def load_npz_data(data_file, data_size, batch_size,
             value = np.array(value, dtype=np.float32)
             value = np.transpose(value, (0,3,1,2))
             value = np.split(value, value.shape[0]/batch_size)
-        else:
+        elif key[:9] != "parameter":
             value = value[:data_size]
             value = np.split(data, data.shape[0]/batch_size)
         if isinstance(value[0], np.ndarray):
