@@ -81,7 +81,7 @@ def run_epoch(network, data, labels, loss, optimizer,
             ]
         else:
             epoch_losses = [
-                epoch_losses[i] + losses[i] for i in range(len(losses))
+                epoch_losses[i] + losses[i].item() for i in range(len(losses))
             ]
         losses[0].backward()
         if train:
