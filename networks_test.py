@@ -69,7 +69,7 @@ def load_npz_data(data_file, data_size, batch_size,
     assert data_size % batch_size == 0, \
         "data_size must be divisble by batch_size"
     print("Loading data from {}...".format(data_file))
-    data = np.load(data_file)
+    data = dict(np.load(data_file))
     
     for key, value in data.items():
         if key == "imgs":
