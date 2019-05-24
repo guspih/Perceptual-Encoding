@@ -81,7 +81,7 @@ def load_npz_data(data_file, data_size, batch_size,
             continue
         else:
             value = value[:data_size]
-            value = np.split(data, value.shape[0]/batch_size)
+            value = np.split(value, value.shape[0]/batch_size)
         if isinstance(value[0], np.ndarray):
             value = [torch.from_numpy(batch) for batch in value]
             if gpu:
@@ -95,7 +95,7 @@ def load_npz_data(data_file, data_size, batch_size,
         train_data[key] = []
         test_data[key] = []
         for batch in value:
-            if len(train_data)/len(data) < 1-test_split:
+            if len(train_data[key])/len(value) < 1-test_split:
                 train_data[key].append(batch)
             else:
                 test_data[key].append(batch)
