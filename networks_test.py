@@ -115,20 +115,17 @@ def load_npz_data(data_file, data_size, batch_size,
 
     return splits
 
-def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
-    splits, z_dimensions=32, variational=False, gamma=0.001,
-    perceptual_loss=False, load_file=None, gpu=False, display=False
+def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32, variational=False,
+    gamma=0.001, perceptual_loss=False, load_file=None, gpu=False, display=False
 ):
     '''
-    Trains an autoencoder with data from a specified .npz file
+    Trains an image autoencoder with data in dicts with images in key "imgs"
 
     Args:
-        data_file (str): Path to the .npz file with images in key "imgs"
+        data ([{train},{test}]): Batched dicts with images in key "imgs"
         network (f()->nn.Module): Class of network to train
         epochs (int): Number of epochs to run
-        data_size (int): Number of images from the data to train on
-        batch_size (int): Number of images per batch
-        splits ([float, float]): Training and validation splits
+        experiment_name (str): Name of experiment
         z_dimensions (int): Number of latent dimensions for encoding
         variational (bool): Whether to train the network as a variational AE
         gamma (float): Weight of the KLD loss in training variational AE
@@ -139,10 +136,8 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
 
         Returns: (nn.Module)
     '''
-    data, validation_data = load_npz_data(
-        data_file, data_size, batch_size, splits, gpu=gpu
-    )
-    data = data["imgs"]
+    train_data, validation_data = data
+    train_data = train_data["imgs"]
     validation_data = validation_data["imgs"]
 
     if not load_file is None:
@@ -157,23 +152,25 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
     if gpu:
         model = model.cuda()
 
-    save_file = "AE_{}_{}_{}_{}.pt".format(
-        data_file, z_dimensions, gamma,
+    save_file = "AE_{}_{}_{}.pt".format(
+        z_dimensions, gamma,
         datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
-    )
+    ).replace(".","-")
     if variational:
         save_file = "V"+save_file
     if perceptual_loss:
         save_file = "Perceptual_"+save_file
+    if experiment_name != "":
+        save_file = experiment_name+"_"+save_file
 
     optimizer = torch.optim.Adam(model.parameters())
 
     best_validation_loss = float("inf")
 
     for epoch in range(epochs):
-        np.random.shuffle(data)
+        np.random.shuffle(train_data)
         training_losses = run_epoch(
-            model, data, data, model.loss, optimizer,
+            model, train_data, train_data, model.loss, optimizer,
             "Epoch {}".format(epoch), train=True
         )
 
@@ -195,10 +192,10 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
         if gpu:
             model.cuda()
         if display:
-            show_recreation(data, model, epoch=epoch, batch=0, block=False)
+            show_recreation(train_data, model, epoch=epoch, batch=0, block=False)
     if display:
-        for batch_id in range(len(data)):
-            show_recreation(data, model, epoch=epochs, batch=batch_id, block=True)
+        for batch_id in range(len(train_data)):
+            show_recreation(train_data, model, epoch=epochs, batch=batch_id, block=True)
     
     return model
 
@@ -207,21 +204,24 @@ if __name__ == "__main__":
     If run directly this will train an autoencoder on the lunarlander dataset
 
     Parameters:
-            DATA_FILE (str): Path to the .npz file with images stored with key "imgs"
-            EPOCHS (int): Number of epochs to run
-            DATA_SIZE (int): Number of images from the data to train on
-            BATCH_SIZE (int): Number of images per batch
-            VALIDATION_SPLIT (float): Fraction of batches for validation
-            Z_DIMENSIONS (int): Number of latent dimensions for encoding
-            VARIATIONAL (bool): Whether to train the network as a variational AE
-            GAMMA (float): Weight of the KLD loss in training variational AE
-            PERCEPTUAL_LOSS (bool): Whether to train with pereptual or pixelwise error
-            LOAD_FILE (str / None): Path for loading models, overrides parameters
-            GPU (bool): Whether to train on the GPU
-            DISPLAY (bool): Whether to display the recreated images
+        DATA_FILE (str): Path to the .npz file with images stored in key "imgs"
+        EXPERIMENT_NAME (str): Name of experiment
+        EPOCHS (int): Number of epochs to run
+        DATA_SIZE (int): Number of images from the data to train on
+        BATCH_SIZE (int): Number of images per batch
+        VALIDATION_SPLIT (float): Fraction of batches for validation
+        Z_DIMENSIONS (int): Number of latent dimensions for encoding
+        VARIATIONAL (bool): Whether to train the network as a variational AE
+        GAMMA (float): Weight of the KLD loss in training variational AE
+        PERCEPTUAL_LOSS (bool): Whether to use with pereptual or pixelwise error
+        LOAD_FILE (str / None): Path for loading models, overrides parameters
+        GPU (bool): Whether to train on the GPU
+        DISPLAY (bool): Whether to display the recreated images
     '''
 
     DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
+    EXPERIMENT_NAME = "LunarLander"
+    NETWORK = CVAE_64x64
     EPOCHS = 50
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
@@ -234,8 +234,9 @@ if __name__ == "__main__":
     GPU = torch.cuda.is_available()
     DISPLAY = False
 
-train_npz_autoencoder(
-    DATA_FILE, CVAE_64x64, EPOCHS, DATA_SIZE,
-    BATCH_SIZE, SPLITS, Z_DIMENSIONS, VARIATIONAL,
+DATA = load_npz_data(DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU)
+
+train_autoencoder(
+    DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, Z_DIMENSIONS, VARIATIONAL,
     GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU, DISPLAY
 )
