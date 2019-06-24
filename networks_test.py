@@ -116,23 +116,23 @@ def load_npz_data(data_file, data_size, batch_size,
     return splits
 
 def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
-    validation_split, z_dimensions=32, variational=False, gamma=0.001,
+    splits, z_dimensions=32, variational=False, gamma=0.001,
     perceptual_loss=False, load_file=None, gpu=False, display=False
 ):
     '''
     Trains an autoencoder with data from a specified .npz file
 
     Args:
-        data_file (str): Path to the .npz file with images stored with key "imgs"
+        data_file (str): Path to the .npz file with images in key "imgs"
         network (f()->nn.Module): Class of network to train
         epochs (int): Number of epochs to run
         data_size (int): Number of images from the data to train on
         batch_size (int): Number of images per batch
-        validation_split (float): Fraction of batches for validation
+        splits ([float, float]): Training and validation splits
         z_dimensions (int): Number of latent dimensions for encoding
         variational (bool): Whether to train the network as a variational AE
         gamma (float): Weight of the KLD loss in training variational AE
-        perceptual_loss (bool): Whether to train with pereptual or pixelwise error
+        perceptual_loss (bool): Whether to use perceptual or pixelwise loss
         load_file (str / None): Path for loading models, overrides parameters
         gpu (bool): Whether to train on the GPU
         display (bool): Whether to display the recreated images
@@ -140,7 +140,7 @@ def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
         Returns: (nn.Module)
     '''
     data, validation_data = load_npz_data(
-        data_file, data_size, batch_size, validation_split, gpu=gpu
+        data_file, data_size, batch_size, splits, gpu=gpu
     )
     data = data["imgs"]
     validation_data = validation_data["imgs"]
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     EPOCHS = 50
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
-    VALIDATION_SPLIT = 0.2
+    SPLIT = 0.2
     Z_DIMENSIONS = 32
     VARIATIONAL = False
     GAMMA = 0.001
