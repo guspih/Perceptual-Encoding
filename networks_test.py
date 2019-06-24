@@ -93,9 +93,9 @@ def load_npz_data(data_file, data_size, batch_size,
         data[key] = value
 
     split_sum = sum(split_distribution)
-    split_distribution = [math.floor(data_size*(f/split_sum)) for f in split_distribution]
+    split_distribution = [math.floor((data_size/batch_size)*(f/split_sum)) for f in split_distribution]
     j = 0
-    while sum(split_distribution) < data_size:
+    while sum(split_distribution) < data_size/batch_size:
         split_distribution[j] = split_distribution[j]+1
         j = j+1
     splits = [{} for _ in range(len(split_distribution))]
@@ -111,7 +111,7 @@ def load_npz_data(data_file, data_size, batch_size,
             if i == next_up:
                 j = j+1
                 next_up = next_up+split_distribution[j]
-            split[j][key].append(batch)
+            splits[j][key].append(batch)
 
     return splits
 
@@ -225,17 +225,17 @@ if __name__ == "__main__":
     EPOCHS = 50
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
-    SPLIT = 0.2
+    SPLITS = [0.8, 0.2]
     Z_DIMENSIONS = 32
     VARIATIONAL = False
     GAMMA = 0.001
     PERCEPTUAL_LOSS = False
     LOAD_FILE = None 
-    GPU = False
-    DISPLAY = True
+    GPU = torch.cuda.is_available()
+    DISPLAY = False
 
 train_npz_autoencoder(
     DATA_FILE, CVAE_64x64, EPOCHS, DATA_SIZE,
-    BATCH_SIZE, VALIDATION_SPLIT, Z_DIMENSIONS, VARIATIONAL,
+    BATCH_SIZE, SPLITS, Z_DIMENSIONS, VARIATIONAL,
     GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU, DISPLAY
 )
