@@ -49,7 +49,7 @@ def show_recreation(data, model, epoch=0, batch=0, block=False):
     )
 
 def load_npz_data(data_file, data_size, batch_size,
-    test_split=0.2, gpu=False
+    split_distribution=[0.8,0.2], gpu=False
 ):
     '''
     Loads data from an .npz file
@@ -59,12 +59,12 @@ def load_npz_data(data_file, data_size, batch_size,
 
     Args:
         data_file (str): Path to file with data
-        data_size (int): Amount of images to load
+        data_size (int): Amount of data to load
         batch_size (int): How much data will be stored in each batch
-        test_split (float): What portion of batches to use for testing
+        split_distribution ([float]): List of fractions of data split
         gpu (bool): Whether data will be used on the GPU
 
-    Returns: ([tensor],[tensor])
+    Returns: ([{data}])
     '''
     assert data_size % batch_size == 0, \
         "data_size must be divisble by batch_size"
@@ -82,28 +82,38 @@ def load_npz_data(data_file, data_size, batch_size,
         else:
             value = value[:data_size]
             value = np.split(value, value.shape[0]/batch_size)
-        if (isinstance(value[0], np.ndarray) and 
-                value[0].dtype.kind in ["f","u","i"]):
+        if (
+            isinstance(value[0], np.ndarray) and 
+            value[0].dtype.kind in ["f","u","i"]
+        ):
             value = [torch.from_numpy(batch) for batch in value]
             if gpu:
                 value = [batch.cuda() for batch in value]
         
         data[key] = value
 
-    train_data = {}
-    test_data = {}
+    split_sum = sum(split_distribution)
+    split_distribution = [math.floor(data_size*(f/split_sum)) for f in split_distribution]
+    j = 0
+    while sum(split_distribution) < data_size:
+        split_distribution[j] = split_distribution[j]+1
+        j = j+1
+    splits = [{} for _ in range(len(split_distribution))]
+
     for key, value in data.items():
         if key[:9] == "parameter":
             continue
-        train_data[key] = []
-        test_data[key] = []
-        for batch in value:
-            if len(train_data[key])/len(value) < 1-test_split:
-                train_data[key].append(batch)
-            else:
-                test_data[key].append(batch)
+        for split in splits:
+            split[key] = []
+        next_up = split_distribution[0]
+        j = 0 
+        for i, batch in enumerate(value):
+            if i == next_up:
+                j = j+1
+                next_up = next_up+split_distribution[j]
+            split[j][key].append(batch)
 
-    return train_data, test_data
+    return splits
 
 def train_npz_autoencoder(data_file, network, epochs, data_size, batch_size,
     validation_split, z_dimensions=32, variational=False, gamma=0.001,
