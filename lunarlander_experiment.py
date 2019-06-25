@@ -46,11 +46,12 @@ if GPU:
     encoder.cuda()
     regressor.cuda()
 
+encoder.eval()
 for split in [train1, train2, validation, test]:
     split["encodings"] = []
     for i, img_batch in enumerate(split["imgs"]):
         code_batch = encoder.encode(img_batch)
-        split["encodings"].append(code_batch)
+        split["encodings"].append(code_batch.cpu())
 
 optimizer = torch.optim.Adam(regressor.parameters())
 loss_function = torch.nn.MSELoss()
