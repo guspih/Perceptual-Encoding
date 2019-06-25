@@ -43,7 +43,7 @@ if LOAD_FILE is None:
 else:
     regressor = torch.load(LOAD_FILE)
 
-if gpu:
+if GPU:
     encoder.gpu()
     regressor.gpu()
 
