@@ -122,7 +122,7 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
     Trains an image autoencoder with data in dicts with images in key "imgs"
 
     Args:
-        data ([{train},{test}]): Batched dicts with images in key "imgs"
+        data ([{train},{validation}]): Batched dicts with images in key "imgs"
         network (f()->nn.Module): Class of network to train
         epochs (int): Number of epochs to run
         experiment_name (str): Name of experiment
@@ -180,7 +180,7 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
         )
 
         print(
-            "EPOCH: {}, TRAINING LOSS: {} VALIDATION LOSS: {}".format(
+            "EPOCH: {}, TRAINING LOSS: {0:.5f} VALIDATION LOSS: {0:.5f}".format(
                 epoch, training_losses, validation_losses
             )
         )
@@ -223,9 +223,9 @@ if __name__ == "__main__":
     EXPERIMENT_NAME = "LunarLander"
     NETWORK = CVAE_64x64
     EPOCHS = 50
-    DATA_SIZE = 50000
+    DATA_SIZE = 40000
     BATCH_SIZE = 1000
-    SPLITS = [0.8, 0.2]
+    SPLITS = [0.75, 0.25]
     Z_DIMENSIONS = 32
     VARIATIONAL = False
     GAMMA = 0.001

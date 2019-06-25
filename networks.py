@@ -232,11 +232,11 @@ def dense_net(input_size, layers, activation_functions):
         layers ([int]): Layer sizes
         activation_functions ([f()->nn.Module]): class of activation functions
     
-    Returns: nn.Sequential
+    Returns: (nn.Sequential)
     '''
 
     network = nn.Sequential()
-    network.add_module(input_size, layers[0])
+    layers = [input_size] + layers
     for layer_id in range(len(layers)-1):
         network.add_module(
             'linear{}'.format(layer_id),
