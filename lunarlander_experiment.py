@@ -28,7 +28,7 @@ if ENCODER_FILE is None:
         [train1,validation],
         CVAE_64x64,
         50,
-        "LunarLander-Pretraining",
+        "LunarLander-Pretraining"
     )
 else:
     encoder = torch.load(ENCODER_FILE)
@@ -43,8 +43,8 @@ else:
     regressor = torch.load(LOAD_FILE)
 
 if GPU:
-    encoder.gpu()
-    regressor.gpu()
+    encoder.cuda()
+    regressor.cuda()
 
 for split in [train1, train2, validation, test]:
     split["encodings"] = []
