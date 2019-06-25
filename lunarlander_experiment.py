@@ -29,7 +29,6 @@ if ENCODER_FILE is None:
         CVAE_64x64,
         50,
         "LunarLander-Pretraining",
-        gpu=GPU
     )
 else:
     encoder = torch.load(ENCODER_FILE)
@@ -55,10 +54,10 @@ for split in [train1, train2, validation, test]:
 
 optimizer = torch.optim.Adam(regressor.parameters())
 loss_function = torch.nn.MSELoss()
-save_file = "LunarLander_Regressor_{}_{}.pt".format(
+save_file = "LunarLander_Regressor_{}_{}".format(
     encoder.z_dimensions,
     datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
-).replace(".","-")
+).replace(".","-") + ".pt"
 
 best_validation_loss = float("inf")
 regressor.train()

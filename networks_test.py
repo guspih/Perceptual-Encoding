@@ -152,10 +152,10 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
     if gpu:
         model = model.cuda()
 
-    save_file = "AE_{}_{}_{}.pt".format(
+    save_file = "AE_{}_{}_{}".format(
         z_dimensions, gamma,
         datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
-    ).replace(".","-")
+    ).replace(".","-") + "pt"
     if variational:
         save_file = "V"+save_file
     if perceptual_loss:
@@ -164,7 +164,6 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
         save_file = experiment_name+"_"+save_file
 
     optimizer = torch.optim.Adam(model.parameters())
-
     best_validation_loss = float("inf")
 
     for epoch in range(epochs):
