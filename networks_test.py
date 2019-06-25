@@ -180,7 +180,7 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
         )
 
         print(
-            "EPOCH: {:d}, TRAINING LOSS: {:.5f} VALIDATION LOSS: {:.5f}".format(
+            "EPOCH: {}, TRAINING LOSS: {:.5f} VALIDATION LOSS: {:.5f}".format(
                 epoch, training_losses, validation_losses
             )
         )
