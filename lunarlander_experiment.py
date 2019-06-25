@@ -9,13 +9,13 @@ import datetime
 import csv
 
 DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
-ENCODER_FILE = ""
+ENCODER_FILE = None
 LOAD_FILE = None
 DATA_SIZE = 90000
 BATCH_SIZE = 1000
 SPLITS = [0.3, 0.1, 0.4, 0.1]
 EPCOHS = 100
-GPU = True
+GPU = torch.cuda.is_available()
 REGRESSOR_LAYERS = [2]
 REGRESSOR_ACTIVATIONS = [None]
 
@@ -28,7 +28,8 @@ if ENCODER_FILE is None:
         [train1,validation],
         CVAE_64x64,
         50,
-        "LunarLander-Pretraining"
+        "LunarLander-Pretraining",
+        gpu=GPU
     )
 else:
     encoder = torch.load(ENCODER_FILE)
