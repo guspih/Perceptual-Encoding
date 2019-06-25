@@ -234,9 +234,9 @@ if __name__ == "__main__":
     GPU = torch.cuda.is_available()
     DISPLAY = False
 
-DATA = load_npz_data(DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU)
+    DATA = load_npz_data(DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU)
 
-train_autoencoder(
-    DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, Z_DIMENSIONS, VARIATIONAL,
-    GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU, DISPLAY
-)
+    train_autoencoder(
+        DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, Z_DIMENSIONS, VARIATIONAL,
+        GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU, DISPLAY
+    )

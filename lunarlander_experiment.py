@@ -15,7 +15,7 @@ DATA_SIZE = 90000
 BATCH_SIZE = 1000
 SPLITS = [0.3, 0.1, 0.4, 0.1]
 EPCOHS = 100
-GPU = False
+GPU = True
 REGRESSOR_LAYERS = [2]
 REGRESSOR_ACTIVATIONS = [None]
 
@@ -41,6 +41,10 @@ if LOAD_FILE is None:
     )
 else:
     regressor = torch.load(LOAD_FILE)
+
+if gpu:
+    encoder.gpu()
+    regressor.gpu()
 
 for split in [train1, train2, validation, test]:
     split["encodings"] = []
