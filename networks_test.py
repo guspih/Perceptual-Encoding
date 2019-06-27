@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import random
-from networks import CVAE_64x64, run_epoch
+from networks import CVAE_64x64, run_epoch, run_training
 import math
 import datetime
+import os
 
 def show(imgs, block=False, heading="Figure"):
     '''
@@ -37,14 +38,14 @@ def show_recreation(data, model, epoch=0, batch=0, block=False):
         block (bool): Whether to stop execution until user closes image
     '''
     r = torch.tensor([random.choice(range(data[batch].size(0)))])
-    if data.is_cuda:
-        r.cuda()
+    if data[batch].is_cuda:
+        r = r.cuda()
     img1 = torch.index_select(data[batch], 0, r)
     mu, logvar = model.encode(img1)
     z = model.sample(mu,logvar)
     img2 = model.decode(z)
     show(
-        [img1,img2], block=block, 
+        [img1.cpu(),img2.cpu()], block=block, 
         heading="Random image from: Epoch {}, Batch {}".format(epoch, batch)
     )
 
@@ -115,24 +116,25 @@ def load_npz_data(data_file, data_size, batch_size,
 
     return splits
 
-def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32, variational=False,
-    gamma=0.001, perceptual_loss=False, load_file=None, gpu=False, display=False
+def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32,
+    variational=False, gamma=0.001, perceptual_loss=False,
+    gpu=False, display=False, save_path="autoencoder_checkpoints"
 ):
     '''
     Trains an image autoencoder with data in dicts with images in key "imgs"
 
     Args:
         data ([{train},{validation}]): Batched dicts with images in key "imgs"
-        network (f()->nn.Module): Class of network to train
+        network (f()->nn.Module / str): Class or path to a network to train
         epochs (int): Number of epochs to run
         experiment_name (str): Name of experiment
         z_dimensions (int): Number of latent dimensions for encoding
         variational (bool): Whether to train the network as a variational AE
         gamma (float): Weight of the KLD loss in training variational AE
         perceptual_loss (bool): Whether to use perceptual or pixelwise loss
-        load_file (str / None): Path for loading models, overrides parameters
         gpu (bool): Whether to train on the GPU
         display (bool): Whether to display the recreated images
+        save_path (str): Path to folder where the trained network will be stored
 
         Returns: (nn.Module)
     '''
@@ -140,8 +142,11 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
     train_data = train_data["imgs"]
     validation_data = validation_data["imgs"]
 
-    if not load_file is None:
-        model = torch.load(load_file)
+    if isinstance(network, str):
+        if gpu:
+            model = torch.load(network)
+        else:
+            model = torch.load(network, map_location="cpu")
     else:
         model = network(
             z_dimensions=z_dimensions,
@@ -162,38 +167,66 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
         save_file = "Perceptual_"+save_file
     if experiment_name != "":
         save_file = experiment_name+"_"+save_file
+    if save_path != "":
+        if not os.path.isdir(save_path):
+            os.mkdir(save_path)
+        save_file = save_path+"/"+save_file
+
+    print(
+        "Starting autoencoder training. Best checkpoint stored in {}".format(
+            save_file
+        )
+    )
 
     optimizer = torch.optim.Adam(model.parameters())
-    best_validation_loss = float("inf")
 
-    for epoch in range(epochs):
-        np.random.shuffle(train_data)
-        training_losses = run_epoch(
-            model, train_data, train_data, model.loss, optimizer,
-            "Epoch {}".format(epoch), train=True
+    epoch_update = None
+    if display:
+        epoch_update = lambda _a, _b, _c : show_recreation(
+                train_data, model, epoch=0, batch=0, block=False
+            ) or True
+
+    if epochs != 0:
+        run_training(
+            model = model,
+            train_data = (train_data, train_data),
+            val_data = (validation_data, validation_data),
+            loss = model.loss,
+            optimizer = optimizer,
+            save_path = save_path,
+            epochs = 50,
+            epoch_update = epoch_update
         )
 
-        validation_losses = run_epoch(
-            model, validation_data, validation_data, model.loss, optimizer,
-            "Validation {}".format(epoch), train=False
-        )
+    # best_validation_loss = float("inf")
+    # for epoch in range(epochs):
+    #     np.random.shuffle(train_data)
+    #     training_losses = run_epoch(
+    #         model, train_data, train_data, model.loss, optimizer,
+    #         "Epoch {}".format(epoch), train=True
+    #     )
 
-        print(
-            "EPOCH: {}, TRAINING LOSS: {} VALIDATION LOSS: {}".format(
-                epoch,
-                str(["{0:.5f}".format(l) for l in training_losses]),
-                str(["{0:.5f}".format(l) for l in validation_losses])
-            )
-        )
+    #     validation_losses = run_epoch(
+    #         model, validation_data, validation_data, model.loss, optimizer,
+    #         "Validation {}".format(epoch), train=False
+    #     )
+
+    #     print(
+    #         "EPOCH: {}, TRAINING LOSS: {} VALIDATION LOSS: {}".format(
+    #             epoch,
+    #             str(["{0:.5f}".format(l) for l in training_losses]),
+    #             str(["{0:.5f}".format(l) for l in validation_losses])
+    #         )
+    #     )
         
-        if validation_losses[0] < best_validation_loss:
-            torch.save(model.cpu(), save_file)
-            best_validation_loss = validation_losses[0]
+    #     if validation_losses[0] < best_validation_loss:
+    #         torch.save(model.cpu(), save_file)
+    #         best_validation_loss = validation_losses[0]
         
-        if gpu:
-            model.cuda()
-        if display:
-            show_recreation(train_data, model, epoch=epoch, batch=0, block=False)
+    #     if gpu:
+    #         model.cuda()
+    #     if display:
+    #         show_recreation(train_data, model, epoch=epoch, batch=0, block=False)
     if display:
         for batch_id in range(len(train_data)):
             show_recreation(train_data, model, epoch=epochs, batch=batch_id, block=True)
@@ -222,22 +255,23 @@ if __name__ == "__main__":
 
     DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
     EXPERIMENT_NAME = "LunarLander"
-    NETWORK = CVAE_64x64
-    EPOCHS = 50
-    DATA_SIZE = 40000
+    NETWORK = "autoencoder_checkpoints/CVAE_64x64_2019-06-27_14h53.pt"#CVAE_64x64
+    EPOCHS = 100
+    DATA_SIZE = 50000
     BATCH_SIZE = 1000
-    SPLITS = [0.75, 0.25]
+    SPLITS = [0.4, 0.1]
     Z_DIMENSIONS = 32
     VARIATIONAL = False
     GAMMA = 0.001
     PERCEPTUAL_LOSS = False
-    LOAD_FILE = None 
     GPU = torch.cuda.is_available()
-    DISPLAY = False
+    DISPLAY = True
 
-    DATA = load_npz_data(DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU)
+    DATA = load_npz_data(
+        DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU
+    )
 
     train_autoencoder(
         DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, Z_DIMENSIONS, VARIATIONAL,
-        GAMMA, PERCEPTUAL_LOSS, LOAD_FILE, GPU, DISPLAY
+        GAMMA, PERCEPTUAL_LOSS, GPU, DISPLAY
     )

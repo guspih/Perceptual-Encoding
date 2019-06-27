@@ -4,7 +4,9 @@ import numpy as np
 import torchvision.models as models
 from torch.nn import functional as F
 import torch.nn as nn
+import datetime
 import time
+import sys
 
 def _create_coder(channels, kernel_sizes, strides,
     conv_types, activation_types, paddings = (0,0)
@@ -61,7 +63,7 @@ def run_epoch(network, data, labels, loss, optimizer,
         network (nn.Module): The network to be trained
         data ([tensor]): List of the batches of data to train on
         labels ([tensor]): List of the batches of labels to target
-        loss (f(tensor, tensor)->[tensor]): Loss calculation function
+        loss (f(output, target)->[tensor]): Loss calculation function
         optimizer (optim.Optimizer): Optimizer for use in training
         epoch_name (str): Name of the epoch (usually a number)
         train (bool): Whether to run this epoch to train or just to evaluate
@@ -94,13 +96,81 @@ def run_epoch(network, data, labels, loss, optimizer,
         print(
             "\r{} - [{}/{}] - Losses: {}, Time passed: {}s".format(
                 epoch_name, batch_id+1, len(batches),
-                str(["{0:.5f}".format(l.item()) for l in losses]),
+                ", ".join(
+                    ["{0:.5f}".format(l/(batch_id+1)) for l in epoch_losses]
+                ),
                 "{0:.1f}".format(time.time()-start_time)
             ),end=""
         )
     print()
 
     return epoch_losses
+
+def run_training(model, train_data, val_data, loss,
+    optimizer, save_path, epochs, epoch_update=None
+):
+    '''
+    Args:
+        model (nn.Module): The network to be trained
+        train_data ([tensor],[tensor]): Batches of data and labels to train on
+        val_data ([tensor],[tensor]): Batches of data and labels to validate on
+        loss (f(output, target)->[tensor]): Loss calculation function
+        optimizer (optim.Optimizer): Optimizer for use in training
+        save_path (str): Path to folder where the model will be stored
+        epochs (int): Number of epochs to train for
+        epoch_update (f(epoch, train_loss, val_loss) -> bool): Function to run
+            at the end of a epoch. Returns whether to early stop
+    '''
+
+    save_file = (
+        model. __class__.__name__ + 
+        datetime.datetime.now().strftime("_%Y-%m-%d_%Hh%M.pt")
+    )
+    save_file = save_path + "/" + save_file
+
+    best_validation_loss = float("inf")
+    for epoch in range(1,epochs+1):
+        training_losses = run_epoch(
+            model, train_data[0], train_data[1], model.loss, optimizer,
+            "Train {}".format(epoch), train=True
+        )
+
+        validation_losses = run_epoch(
+            model, val_data[0], val_data[1], model.loss, optimizer,
+            "Validation {}".format(epoch), train=False
+        )
+        
+        if validation_losses[0] < best_validation_loss:
+            torch.save(model, save_file)
+            best_validation_loss = validation_losses[0]
+        
+        if not epoch_update is None:
+            early_stop = epoch_update(epoch, training_losses, validation_losses)
+            if early_stop:
+                break
+
+class PrintLogger():
+    '''
+    Logger used for logging printouts
+
+    Args:
+        logs ([str]): Files to store logs in
+    '''
+    
+    def __init__(self, logs):
+        self.stream = sys.stdout
+        self.targets = [open(log, "a+") for log in logs]
+        self.targets.append(self.stream)
+        sys.stdout = self
+
+    def write(self, text):
+        [t.write(text) for t in self.targets]
+
+    def flush(self):
+        [t.flush() for t in self.targets]
+
+    def __del__(self):
+        sys.stdout = self.stream
 
 
 class CVAE_64x64(nn.Module):
