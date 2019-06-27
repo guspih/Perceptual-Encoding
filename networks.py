@@ -131,12 +131,12 @@ def run_training(model, train_data, val_data, loss,
     best_validation_loss = float("inf")
     for epoch in range(1,epochs+1):
         training_losses = run_epoch(
-            model, train_data[0], train_data[1], model.loss, optimizer,
+            model, train_data[0], train_data[1], loss, optimizer,
             "Train {}".format(epoch), train=True
         )
 
         validation_losses = run_epoch(
-            model, val_data[0], val_data[1], model.loss, optimizer,
+            model, val_data[0], val_data[1], loss, optimizer,
             "Validation {}".format(epoch), train=False
         )
         

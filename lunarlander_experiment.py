@@ -8,7 +8,7 @@ import csv
 import os
 import sys
 
-from networks import CVAE_64x64, dense_net, run_epoch, PrintLogger
+from networks import CVAE_64x64, dense_net, run_epoch, PrintLogger, run_training
 from networks_test import load_npz_data, train_autoencoder
 
 DATA_FILE = "LunarLander-v2_92623_Cleaned.npz"
@@ -106,77 +106,46 @@ print(
     )
 )
 
-best_validation_loss = float("inf")
-regressor.train()
-for epoch in range(1,EPOCHS+1):
-    # epoch_training_loss = 0
-    # for i, (source, obs) in enumerate(
-    #     zip(train2["encodings"], train2["observations"])
-    # ):
-    #     target = obs.narrow(1,0,2)
-    #     optimizer.zero_grad()
-    #     output = regressor(source[0])
-    #     loss = loss_function(output, target)
-    #     epoch_training_loss = epoch_training_loss+loss.item()
-    #     loss.backward()
-    #     optimizer.step()
-    #     print(
-    #         "\rEpoch {} - Training - [{}/{}]".format(
-    #             epoch+1, i+1, len(train2["encodings"])
-    #         ),
-    #         end=""
-    #     )
+#best_validation_loss = float("inf")
+# regressor.train()
+# for epoch in range(1,EPOCHS+1):
 
-    epoch_training_loss = run_epoch(
-        regressor,
-        train2["encodings"],
-        train2["observations"],
-        loss_functions,
-        optimizer,
-        "Train " + str(epoch),
-        True
+#     epoch_training_loss = run_epoch(
+#         regressor,
+#         train2["encodings"],
+#         train2["observations"],
+#         loss_functions,
+#         optimizer,
+#         "Train " + str(epoch),
+#         True
+#     )
+
+#     epoch_validation_loss = run_epoch(
+#         regressor,
+#         validation["encodings"],
+#         validation["observations"],
+#         loss_functions,
+#         optimizer,
+#         "Validation " + str(epoch),
+#         False
+#     )
+#     if epoch_validation_loss[0] < best_validation_loss:
+#         best_validation_loss = epoch_validation_loss[0]
+#         torch.save(regressor.cpu(), save_file)
+#         if GPU:
+#             regressor.cuda()
+
+if EPOCHS != 0:
+    run_training(
+        model = regressor,
+        train_data = (train2["encodings"], train2["observations"]),
+        val_data = (validation["encodings"], validation["observations"]),
+        loss = loss_functions,
+        optimizer = optimizer,
+        save_path = SAVE_PATH,
+        epochs = EPOCHS,
+        epoch_update = None
     )
-
-    # epoch_validation_loss = 0
-    # with torch.no_grad():
-    #     for i, (source, obs) in enumerate(
-    #         zip(validation["encodings"], validation["observations"])
-    #     ):
-    #         target = obs.narrow(1,0,2)
-    #         output = regressor(source[0])
-    #         loss = loss_function(output, target)
-    #         epoch_validation_loss = epoch_validation_loss+loss.item()
-    #         print(
-    #             "\rEpoch {} - Validation - [{}/{}]".format(
-    #                 epoch+1, i+1, len(validation["encodings"])
-    #             ),
-    #             end=""
-    #         )
-    epoch_validation_loss = run_epoch(
-        regressor,
-        validation["encodings"],
-        validation["observations"],
-        loss_functions,
-        optimizer,
-        "Validation " + str(epoch),
-        False
-    )
-    if epoch_validation_loss[0] < best_validation_loss:
-        best_validation_loss = epoch_validation_loss[0]
-        torch.save(regressor.cpu(), save_file)
-        if GPU:
-            regressor.cuda()
-
-# with torch.no_grad():
-#     for i, (source, obs) in enumerate(
-#         zip(test["encodings"], test["observations"])
-#     ):
-#         target = obs.narrow(1,0,2)
-#         output = regressor(source[0])
-#         loss = loss_function(output, target)
-#         accuracy = torch.mean(torch.abs(output-target))
-#         test_loss = test_loss+loss.item()
-#         test_accuracy = test_accuracy+accuracy.item()
 
 test_losses = lambda output, target : [
         loss_function(output, target),

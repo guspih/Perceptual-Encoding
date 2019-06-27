@@ -198,35 +198,6 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
             epoch_update = epoch_update
         )
 
-    # best_validation_loss = float("inf")
-    # for epoch in range(epochs):
-    #     np.random.shuffle(train_data)
-    #     training_losses = run_epoch(
-    #         model, train_data, train_data, model.loss, optimizer,
-    #         "Epoch {}".format(epoch), train=True
-    #     )
-
-    #     validation_losses = run_epoch(
-    #         model, validation_data, validation_data, model.loss, optimizer,
-    #         "Validation {}".format(epoch), train=False
-    #     )
-
-    #     print(
-    #         "EPOCH: {}, TRAINING LOSS: {} VALIDATION LOSS: {}".format(
-    #             epoch,
-    #             str(["{0:.5f}".format(l) for l in training_losses]),
-    #             str(["{0:.5f}".format(l) for l in validation_losses])
-    #         )
-    #     )
-        
-    #     if validation_losses[0] < best_validation_loss:
-    #         torch.save(model.cpu(), save_file)
-    #         best_validation_loss = validation_losses[0]
-        
-    #     if gpu:
-    #         model.cuda()
-    #     if display:
-    #         show_recreation(train_data, model, epoch=epoch, batch=0, block=False)
     if display:
         for batch_id in range(len(train_data)):
             show_recreation(train_data, model, epoch=epochs, batch=batch_id, block=True)
@@ -256,7 +227,7 @@ if __name__ == "__main__":
     DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
     EXPERIMENT_NAME = "LunarLander"
     NETWORK = "autoencoder_checkpoints/CVAE_64x64_2019-06-27_14h53.pt"#CVAE_64x64
-    EPOCHS = 100
+    EPOCHS = 10
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
     SPLITS = [0.4, 0.1]
