@@ -31,6 +31,10 @@ if __name__ == "__main__":
     '''
     If run directly this will remove the entries of off screen landers
     from a predefined .npz file
+
+    Parameters:
+        LOAD_FILE (str): File path to the dataset to clean
+        SAVE_FILE (str): File path to where the new dataset will be stored
     '''
 
     LOAD_FILE = "LunarLander-v2_105000_Dataset.npz"
