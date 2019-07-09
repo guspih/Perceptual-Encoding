@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import random
-from networks import CVAE_64x64, run_epoch, run_training
+from networks import FourLayerCVAE, run_epoch, run_training
 import math
 import datetime
 import os
@@ -116,9 +116,10 @@ def load_npz_data(data_file, data_size, batch_size,
 
     return splits
 
-def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32,
-    variational=False, gamma=0.001, perceptual_loss=False,
-    gpu=False, display=False, save_path="autoencoder_checkpoints"
+def train_autoencoder(data, network, epochs, experiment_name="",
+    z_dimensions=32, variational=False, gamma=0.001,
+    perceptual_loss=False, gpu=False, display=False,
+    save_path="autoencoder_checkpoints"
 ):
     '''
     Trains an image autoencoder with data in dicts with images in key "imgs"
@@ -136,7 +137,7 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
         display (bool): Whether to display the recreated images
         save_path (str): Path to folder where the trained network will be stored
 
-        Returns: (nn.Module)
+    Returns (nn.Module, str): The trained autoencoder and file path of the model
     '''
     train_data, validation_data = data
     train_data = train_data["imgs"]
@@ -149,6 +150,7 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
             model = torch.load(network, map_location="cpu")
     else:
         model = network(
+            input_size=(64,64),
             z_dimensions=z_dimensions,
             variational=variational,
             gamma=gamma,
@@ -156,27 +158,6 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
         )
     if gpu:
         model = model.cuda()
-
-    save_file = "AE_{}_{}_{}".format(
-        z_dimensions, gamma,
-        datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
-    ).replace(".","-") + "pt"
-    if variational:
-        save_file = "V"+save_file
-    if perceptual_loss:
-        save_file = "Perceptual_"+save_file
-    if experiment_name != "":
-        save_file = experiment_name+"_"+save_file
-    if save_path != "":
-        if not os.path.isdir(save_path):
-            os.mkdir(save_path)
-        save_file = save_path+"/"+save_file
-
-    print(
-        "Starting autoencoder training. Best checkpoint stored in {}".format(
-            save_file
-        )
-    )
 
     optimizer = torch.optim.Adam(model.parameters())
 
@@ -187,22 +168,33 @@ def train_autoencoder(data, network, epochs, experiment_name="", z_dimensions=32
             ) or True
 
     if epochs != 0:
-        run_training(
+        print(
+            "Starting autoencoder training. Best checkpoint stored in {}".format(
+                save_path
+            )
+        )   
+        model_file = run_training(
             model = model,
             train_data = (train_data, train_data),
             val_data = (validation_data, validation_data),
             loss = model.loss,
             optimizer = optimizer,
             save_path = save_path,
-            epochs = 50,
+            epochs = epochs,
             epoch_update = epoch_update
         )
+    elif isinstance(network, str):
+        model_file = network
+    else:
+        model_file = None
 
     if display:
         for batch_id in range(len(train_data)):
-            show_recreation(train_data, model, epoch=epochs, batch=batch_id, block=True)
+            show_recreation(
+                train_data, model, epoch=epochs, batch=batch_id, block=True
+            )
     
-    return model
+    return model, model_file
 
 if __name__ == "__main__":
     '''
@@ -226,8 +218,8 @@ if __name__ == "__main__":
 
     DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
     EXPERIMENT_NAME = "LunarLander"
-    NETWORK = "autoencoder_checkpoints/CVAE_64x64_2019-06-27_14h53.pt"#CVAE_64x64
-    EPOCHS = 10
+    NETWORK = FourLayerCVAE
+    EPOCHS = 100
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
     SPLITS = [0.4, 0.1]
@@ -236,7 +228,8 @@ if __name__ == "__main__":
     GAMMA = 0.001
     PERCEPTUAL_LOSS = False
     GPU = torch.cuda.is_available()
-    DISPLAY = True
+    DISPLAY = False
+    SAVE_PATH = "autoencoder_checkpoints"
 
     DATA = load_npz_data(
         DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU
@@ -244,5 +237,5 @@ if __name__ == "__main__":
 
     train_autoencoder(
         DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, Z_DIMENSIONS, VARIATIONAL,
-        GAMMA, PERCEPTUAL_LOSS, GPU, DISPLAY
+        GAMMA, PERCEPTUAL_LOSS, GPU, DISPLAY, SAVE_PATH
     )

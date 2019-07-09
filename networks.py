@@ -8,6 +8,7 @@ import datetime
 import time
 import sys
 
+
 def _create_coder(channels, kernel_sizes, strides,
     conv_types, activation_types, paddings = (0,0)
 ):
@@ -120,14 +121,18 @@ def run_training(model, train_data, val_data, loss,
         epochs (int): Number of epochs to train for
         epoch_update (f(epoch, train_loss, val_loss) -> bool): Function to run
             at the end of a epoch. Returns whether to early stop
+
+    Returns (str): The filepath to the new model
     '''
 
     save_file = (
         model. __class__.__name__ + 
         datetime.datetime.now().strftime("_%Y-%m-%d_%Hh%M.pt")
     )
-    save_file = save_path + "/" + save_file
+    if save_path != "":
+        save_file = save_path + "/" + save_file
 
+    torch.save(model, save_file)
     best_validation_loss = float("inf")
     for epoch in range(1,epochs+1):
         training_losses = run_epoch(
@@ -148,6 +153,8 @@ def run_training(model, train_data, val_data, loss,
             early_stop = epoch_update(epoch, training_losses, validation_losses)
             if early_stop:
                 break
+
+    return save_file
 
 class PrintLogger():
     '''
@@ -173,30 +180,39 @@ class PrintLogger():
         sys.stdout = self.stream
 
 
-class CVAE_64x64(nn.Module):
+class FourLayerCVAE(nn.Module):
     '''
-    A Convolutional Variational Autoencoder for 64x64 images
+    A Convolutional Variational Autoencoder for images
     
     Args:
+        input_size (int,int): The height and width of the input image
+            acceptable sizes are 64+16*n
         z_dimensions (int): The number of latent dimensions in the encoding
         variational (bool): Whether the model is variational or not
         gamma (float): The weight of the KLD loss
         perceptual_loss: Whether to use pixelwise or AlexNet for recon loss
     '''
 
-    def __init__(self, z_dimensions=32, variational=True, 
-        gamma=20.0, perceptual_loss=False
+    def __init__(self, input_size=(64,64), z_dimensions=32,
+        variational=True, gamma=20.0, perceptual_loss=False
     ):
-        super(CVAE_64x64, self).__init__()
+        super(FourLayerCVAE, self).__init__()
+
+        #Parameter check
+        if (input_size[0] - 64) % 16 != 0 or (input_size[1] - 64) % 16 != 0:
+            raise ValueError(
+                "Input_size is {}, but must be 64+16*N".format(input_size)
+            )
 
         #Attributes
+        self.input_size = input_size
         self.z_dimensions = z_dimensions
         self.variational = variational
         self.gamma = gamma
         self.perceptual_loss = perceptual_loss
 
         if perceptual_loss:
-            self.alexnet = AlexNet(sigmoid_out=True) #TODO: How to normalize losses for fair comparison
+            self.alexnet = AlexNet(sigmoid_out=True)
         
         encoder_channels = [3,32,64,126,256]
 
@@ -205,18 +221,35 @@ class CVAE_64x64(nn.Module):
             nn.Conv2d, nn.ReLU
         )
         
-        self.mu = nn.Linear(encoder_channels[-1]*4,self.z_dimensions)
-        self.logvar = nn.Linear(encoder_channels[-1]*4,self.z_dimensions)
+        f = lambda x: np.floor((x - (2,2))/2)
+        conv_sizes = f(f(f(f(np.array(input_size)))))
+        conv_flat_size = int(encoder_channels[-1]*conv_sizes[0]*conv_sizes[1])
+        self.mu = nn.Linear(conv_flat_size, self.z_dimensions)
+        self.logvar = nn.Linear(conv_flat_size, self.z_dimensions)
 
-        self.dense = nn.Linear(self.z_dimensions,1024)
+        self.dense = nn.Linear(self.z_dimensions, conv_flat_size)
 
         self.decoder = _create_coder(
-            [1024,128,64,32,3], [5,5,6,6], [2,2,2,2], 
+            [1024,128,64,32,3], [5,5,6,6], [2,2,2,2],
             nn.ConvTranspose2d,
             [nn.ReLU,nn.ReLU,nn.ReLU,nn.Sigmoid]
         )
 
         self.relu = nn.ReLU()
+
+    def __str__(self):
+        string = super(FourLayerCVAE, self).__str__()[:-1]
+        string = string + "  (variational): {}\n  (gamma): {}\n)".format(
+                self.variational,self.gamma
+            )
+        return string
+
+    def __repr__(self):
+        string = super(FourLayerCVAE, self).__repr__()[:-1]
+        string = string + "  (variational): {}\n  (gamma): {}\n)".format(
+                self.variational,self.gamma
+            )
+        return string
 
     def encode(self, x):
         x = self.encoder(x)
@@ -235,7 +268,11 @@ class CVAE_64x64(nn.Module):
     def decode(self, z):
         y = self.dense(z)
         y = self.relu(y)
-        y = y.view(y.size(0), 1024, 1, 1)
+        y = y.view(
+            y.size(0), 1024,
+            int((self.input_size[0]-64)/16)+1,
+            int((self.input_size[0]-64)/16)+1
+        )
         y = self.decoder(y)
         return y
     

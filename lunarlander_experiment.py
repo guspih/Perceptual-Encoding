@@ -8,55 +8,58 @@ import csv
 import os
 import sys
 
-from networks import CVAE_64x64, dense_net, run_epoch, PrintLogger, run_training
+from networks import FourLayerCVAE, dense_net, run_epoch, PrintLogger, run_training
 from networks_test import load_npz_data, train_autoencoder
 
+EXPERIMENTS_PATH = "lunarlander_experiments"
+EXPERIMENTS_FILE = "experiments_data.csv"
+try:
+    os.makedirs(EXPERIMENTS_PATH)
+except FileExistsError:
+    pass
+
+
 def run_lunarlander_experiment(
-    data_file, encoder_file=None, load_file=None,
+    data_file, encoder_file=None, load_regressor_file=None,
     save_path="lunarlander_experiments", data_size=90000,
     batch_size=1000,splits=[0.4, 0.1, 0.3, 0.1], epochs=20,
     gpu=False, regressor_layers=[2], regressor_activations=[None]
 
 ):
-
-    log_file = "log_"+datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")+".log"
+    experiment_data = locals()
+    experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
+    log_file = "log_"+experiment_time+".log"
     if save_path != "":
         if not os.path.isdir(save_path):
             os.mkdir(save_path)
         log_file = save_path+"/"+log_file
     PrintLogger([log_file])
+    experiment_data["log_file"] = log_file
 
     print("Starting LunarLander-v2 regression experiment...")
-    print(
-        "Dataset is {}\nEncoder is {}\nRegressor is {}".format(
-            data_file,
-            encoder_file if encoder_file != None else "going to be trained",
-            load_file if load_file != None else "going to be trained"
-        )
-    )
 
     train1, validation, train2, test = load_npz_data(
         data_file, data_size, batch_size, splits, gpu=gpu
     )
 
-    if ENCODER_FILE is None:
-        encoder = train_autoencoder(
+    if encoder_file is None:
+        encoder, encoder_file = train_autoencoder(
             [train1,validation],
-            CVAE_64x64,
+            FourLayerCVAE,
             50,
             "LunarLander-Pretraining"
         )
     else:
-        encoder = torch.load(ENCODER_FILE)
+        encoder = torch.load(encoder_file)
 
-    if LOAD_FILE is None:
+    if load_regressor_file is None:
         regressor = dense_net(
             encoder.z_dimensions,
-            REGRESSOR_LAYERS,
-            REGRESSOR_ACTIVATIONS
+            regressor_layers,
+            regressor_activations
         )
     else:
-        regressor = torch.load(LOAD_FILE)
+        regressor = torch.load(load_regressor_file)
 
     if GPU:
         encoder.cuda()
@@ -82,8 +85,9 @@ def run_lunarlander_experiment(
     loss_function = torch.nn.MSELoss()
     loss_functions = lambda output, target : [loss_function(output, target)]
 
-    if EPOCHS != 0:
-        run_training(
+    regressor_file = load_regressor_file
+    if epochs != 0 or load_regressor_file == None:
+        regressor_file = run_training(
             model = regressor,
             train_data = (train2["encodings"], train2["observations"]),
             val_data = (validation["encodings"], validation["observations"]),
@@ -93,6 +97,10 @@ def run_lunarlander_experiment(
             epochs = epochs,
             epoch_update = None
         )
+
+    experiment_data["regressor_file"] = regressor_file
+    experiment_data["encoder"] = encoder
+    experiment_data["regressor"] = regressor
 
     test_losses = lambda output, target : [
             loss_function(output, target),
@@ -109,12 +117,22 @@ def run_lunarlander_experiment(
         False
     )
 
+    experiment_data["test_loss"] = losses[0]
+
     test_accuracy = losses[1]/len(test["encodings"])
     print(
         "Test - Loss {:.5f} - Mean Error {:.5f}".format(
             losses[0]/len(test["encodings"]), test_accuracy
         )
     )
+
+    experiment_data["test_loss"] = losses[0]
+    experiment_data["test_mean_error"] = test_accuracy
+
+    with open(EXPERIMENTS_PATH+"/"+EXPERIMENTS_FILE, "a+") as f:
+        f.write("Experiment at {}\n".format(experiment_time).replace("_", " "))
+        f.write(str(experiment_data))
+        f.write("\n\n")
 
 if __name__ == "__main__":
     '''
@@ -136,13 +154,13 @@ if __name__ == "__main__":
     '''
     
     DATA_FILE = "LunarLander-v2_92623_Cleaned.npz"
-    ENCODER_FILE = "autoencoder_checkpoints/CVAE_64x64_2019-06-27_14h53.pt"
+    ENCODER_FILE = "autoencoder_checkpoints/CVAE_64x64_2019-06-28_13h58.pt"
     LOAD_FILE = None
-    SAVE_PATH = "lunarlander_checkpoints"
+    SAVE_PATH = "lunarlander_experiments"
     DATA_SIZE = 90000
     BATCH_SIZE = 1000
     SPLITS = [0.3, 0.1, 0.4, 0.1]
-    EPOCHS = 20
+    EPOCHS = 50
     GPU = torch.cuda.is_available()
     REGRESSOR_LAYERS = [2]
     REGRESSOR_ACTIVATIONS = [None]
@@ -150,7 +168,7 @@ if __name__ == "__main__":
     run_lunarlander_experiment(
         data_file=DATA_FILE,
         encoder_file=ENCODER_FILE,
-        load_file=LOAD_FILE,
+        load_regressor_file=LOAD_FILE,
         save_path=SAVE_PATH,
         data_size=DATA_SIZE,
         batch_size=BATCH_SIZE,
