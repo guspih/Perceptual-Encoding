@@ -227,7 +227,9 @@ class FourLayerCVAE(nn.Module):
         self.mu = nn.Linear(conv_flat_size, self.z_dimensions)
         self.logvar = nn.Linear(conv_flat_size, self.z_dimensions)
 
-        self.dense = nn.Linear(self.z_dimensions, conv_flat_size)
+        g = lambda x: int((x-64)/16)+1
+        deconv_flat_size = g(input_size[0]) * g(input_size[1]) * 1024
+        self.dense = nn.Linear(self.z_dimensions, deconv_flat_size)
 
         self.decoder = _create_coder(
             [1024,128,64,32,3], [5,5,6,6], [2,2,2,2],
@@ -271,7 +273,7 @@ class FourLayerCVAE(nn.Module):
         y = y.view(
             y.size(0), 1024,
             int((self.input_size[0]-64)/16)+1,
-            int((self.input_size[0]-64)/16)+1
+            int((self.input_size[1]-64)/16)+1
         )
         y = self.decoder(y)
         return y

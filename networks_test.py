@@ -7,13 +7,14 @@ import math
 import datetime
 import os
 
-def show(imgs, block=False, heading="Figure"):
+def show(imgs, block=False, save=None, heading="Figure"):
     '''
     Paints a column of torch images
 
     Args:
         imgs ([3darray]): Array of images in shape (channels, width, height)
         block (bool): Whether the image should interupt program flow
+        save (str / None): Path to save the image under. Will not save if None
         heading (str)): The heading to put on the image
     '''
     plt.close()
@@ -24,9 +25,11 @@ def show(imgs, block=False, heading="Figure"):
         fig.add_subplot(len(imgs), 1, i+1)
         plt.imshow(img)
     plt.show(block=block)
-    plt.pause(5)
+    if not save is None:
+        plt.savefig(save)
+    #plt.pause(5)
 
-def show_recreation(data, model, epoch=0, batch=0, block=False):
+def show_recreation(data, model, epoch=0, batch=0, block=False, save=None):
     '''
     Shows a random image and the encoders attempted recreation
 
@@ -36,6 +39,7 @@ def show_recreation(data, model, epoch=0, batch=0, block=False):
         epoch (int): Epoch to be printed on the heading
         batch (int): Batch of data to sample the image from
         block (bool): Whether to stop execution until user closes image
+        save (str / None): Path to save the image under. Will not save if None
     '''
     r = torch.tensor([random.choice(range(data[batch].size(0)))])
     if data[batch].is_cuda:
@@ -45,7 +49,7 @@ def show_recreation(data, model, epoch=0, batch=0, block=False):
     z = model.sample(mu,logvar)
     img2 = model.decode(z)
     show(
-        [img1.cpu(),img2.cpu()], block=block, 
+        [img1.cpu(),img2.cpu()], block=block, save=save,
         heading="Random image from: Epoch {}, Batch {}".format(epoch, batch)
     )
 
@@ -65,7 +69,7 @@ def load_npz_data(data_file, data_size, batch_size,
         split_distribution ([float]): List of fractions of data split
         gpu (bool): Whether data will be used on the GPU
 
-    Returns: ([{data}])
+    Returns ([{data}]): A list of dicts where each dict is a batch
     '''
     assert data_size % batch_size == 0, \
         "data_size must be divisble by batch_size"
@@ -117,7 +121,7 @@ def load_npz_data(data_file, data_size, batch_size,
     return splits
 
 def train_autoencoder(data, network, epochs, experiment_name="",
-    z_dimensions=32, variational=False, gamma=0.001,
+    input_size=(64,64), z_dimensions=32, variational=False, gamma=0.001,
     perceptual_loss=False, gpu=False, display=False,
     save_path="autoencoder_checkpoints"
 ):
@@ -129,6 +133,7 @@ def train_autoencoder(data, network, epochs, experiment_name="",
         network (f()->nn.Module / str): Class or path to a network to train
         epochs (int): Number of epochs to run
         experiment_name (str): Name of experiment
+        input_size (int,int): Height and width of images
         z_dimensions (int): Number of latent dimensions for encoding
         variational (bool): Whether to train the network as a variational AE
         gamma (float): Weight of the KLD loss in training variational AE
@@ -150,7 +155,7 @@ def train_autoencoder(data, network, epochs, experiment_name="",
             model = torch.load(network, map_location="cpu")
     else:
         model = network(
-            input_size=(64,64),
+            input_size=input_size,
             z_dimensions=z_dimensions,
             variational=variational,
             gamma=gamma,
@@ -164,8 +169,8 @@ def train_autoencoder(data, network, epochs, experiment_name="",
     epoch_update = None
     if display:
         epoch_update = lambda _a, _b, _c : show_recreation(
-                train_data, model, epoch=0, batch=0, block=False
-            ) or True
+                train_data, model, block=False, save=save_path+"/image.png"
+            ) and False
 
     if epochs != 0:
         print(
@@ -230,12 +235,13 @@ if __name__ == "__main__":
     GPU = torch.cuda.is_available()
     DISPLAY = False
     SAVE_PATH = "autoencoder_checkpoints"
+    INPUT_SIZE = (64,64)
 
     DATA = load_npz_data(
         DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU
     )
 
     train_autoencoder(
-        DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, Z_DIMENSIONS, VARIATIONAL,
-        GAMMA, PERCEPTUAL_LOSS, GPU, DISPLAY, SAVE_PATH
+        DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, INPUT_SIZE, Z_DIMENSIONS,
+        VARIATIONAL, GAMMA, PERCEPTUAL_LOSS, GPU, DISPLAY, SAVE_PATH
     )
