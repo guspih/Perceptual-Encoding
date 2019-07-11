@@ -9,8 +9,8 @@ import time
 import sys
 
 
-def _create_coder(channels, kernel_sizes, strides,
-    conv_types, activation_types, paddings = (0,0)
+def _create_coder(channels, kernel_sizes, strides, conv_types,
+    activation_types, paddings=(0,0), batch_norms=False
 ):
     '''
     Function that creates en- or decoders based on parameters
@@ -22,7 +22,8 @@ def _create_coder(channels, kernel_sizes, strides,
         conv_types ([f()->type]): Type of the convoultion module per layer
         activation_types ([f()->type]): Type of activation function per layer
         paddings ([(int, int)]): The padding per layer
-    
+        batch_norms ([bool]): Whether to use batchnorm on each layer
+
     Returns: (nn.Sequential) The created coder
     '''
     if not isinstance(conv_types, list):
@@ -33,7 +34,9 @@ def _create_coder(channels, kernel_sizes, strides,
 
     if not isinstance(paddings, list):
         paddings = [paddings for _ in range(len(kernel_sizes))]
-
+        
+    if not isinstance(batch_norms, list):
+        batch_norms = [batch_norms for _ in range(len(kernel_sizes))]
 
     coder = nn.Sequential()
     for layer in range(len(channels)-1):
@@ -46,11 +49,13 @@ def _create_coder(channels, kernel_sizes, strides,
                 stride=strides[layer]
             )
         )
-        coder.add_module(
-            'norm'+str(layer),
-            nn.BatchNorm2d(channels[layer+1])
-        )
-        coder.add_module('acti'+str(layer),activation_types[layer]())
+        if batch_norms[layer]:
+            coder.add_module(
+                'norm'+str(layer),
+                nn.BatchNorm2d(channels[layer+1])
+            )
+        if not activation_types is None:
+            coder.add_module('acti'+str(layer),activation_types[layer]())
 
     return coder
 
@@ -234,7 +239,8 @@ class FourLayerCVAE(nn.Module):
         self.decoder = _create_coder(
             [1024,128,64,32,3], [5,5,6,6], [2,2,2,2],
             nn.ConvTranspose2d,
-            [nn.ReLU,nn.ReLU,nn.ReLU,nn.Sigmoid]
+            [nn.ReLU,nn.ReLU,nn.ReLU,nn.Sigmoid],
+            batch_norms=[True,True,True,False]
         )
 
         self.relu = nn.ReLU()
@@ -299,12 +305,9 @@ class FourLayerCVAE(nn.Module):
 
         if self.variational:
             KLD = -1 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+            return REC + self.gamma*KLD, REC, KLD
         else:
-            KLD = torch.tensor([0.0])
-            if REC.is_cuda:
-                KLD = KLD.cuda()
-
-        return REC + self.gamma*KLD, REC, KLD
+            return [REC]
 
 
 class AlexNet(nn.Module):

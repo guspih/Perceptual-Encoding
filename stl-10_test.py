@@ -93,7 +93,7 @@ def imgs2batches(npimgs, data_size, batch_size, split_distribution, gpu=False):
 if __name__ == "__main__":
     DATA_FILE = UNLABELED_DATA_PATH
     EXPERIMENT_NAME = "STL10"
-    NETWORK = FourLayerCVAE
+    NETWORK = "stl10_experiments/FourLayerCVAE_2019-07-09_16h03.pt"
     EPOCHS = 100
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
@@ -106,12 +106,14 @@ if __name__ == "__main__":
     DISPLAY = True
     SAVE_PATH = "stl10_experiments"
     INPUT_SIZE = (96,96)
+    TRAIN_ONLY_DECODER = True
 
     imgs = read_images(DATA_FILE)
 
     data = imgs2batches(imgs, DATA_SIZE, BATCH_SIZE, SPLITS, GPU)
 
     train_autoencoder(
-        data, NETWORK, EPOCHS, EXPERIMENT_NAME, INPUT_SIZE, Z_DIMENSIONS,
-        VARIATIONAL, GAMMA, PERCEPTUAL_LOSS, GPU, DISPLAY, SAVE_PATH
+        data, NETWORK, EPOCHS, EXPERIMENT_NAME, INPUT_SIZE,
+        Z_DIMENSIONS, VARIATIONAL, GAMMA, PERCEPTUAL_LOSS,
+        GPU, DISPLAY, SAVE_PATH, TRAIN_ONLY_DECODER
     )
