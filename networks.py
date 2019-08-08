@@ -54,7 +54,7 @@ def _create_coder(channels, kernel_sizes, strides, conv_types,
                 'norm'+str(layer),
                 nn.BatchNorm2d(channels[layer+1])
             )
-        if not activation_types is None:
+        if not activation_types[layer] is None:
             coder.add_module('acti'+str(layer),activation_types[layer]())
 
     return coder
@@ -223,7 +223,8 @@ class FourLayerCVAE(nn.Module):
 
         self.encoder = _create_coder(
             [3,32,64,126,256], [4,4,4,4], [2,2,2,2],
-            nn.Conv2d, nn.ReLU
+            nn.Conv2d, nn.ReLU,
+            batch_norms=[True,True,True,True]
         )
         
         f = lambda x: np.floor((x - (2,2))/2)
@@ -346,6 +347,11 @@ def dense_net(input_size, layers, activation_functions):
     
     Returns: (nn.Sequential)
     '''
+
+    if not isinstance(activation_functions, list):
+        activation_functions = [
+            activation_functions for _ in range(len(layers)+1)
+        ]
 
     network = nn.Sequential()
     layers = [input_size] + layers

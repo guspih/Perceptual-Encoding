@@ -8,7 +8,8 @@ import csv
 import os
 import sys
 
-from networks import FourLayerCVAE, dense_net, run_epoch, PrintLogger, run_training
+from networks import FourLayerCVAE, PrintLogger
+from networks import dense_net, run_epoch, run_training
 from networks_test import load_npz_data, train_autoencoder
 
 EXPERIMENTS_PATH = "lunarlander_experiments"
@@ -24,8 +25,25 @@ def run_lunarlander_experiment(
     save_path="lunarlander_experiments", data_size=90000,
     batch_size=1000,splits=[0.4, 0.1, 0.3, 0.1], epochs=20,
     gpu=False, regressor_layers=[2], regressor_activations=[None]
-
 ):
+
+    '''
+    Trains a regressor on the LunarLander dataset using a CVAE trained on the
+    data and a dense network that predicts lander position from the encodings
+
+    Args:
+        data_file
+        encoder_file (str / None): Path to encoder to use
+        load_regressor_file (str / None): Path to regressor to use
+        save_path (str): Path to folder where to store trained models
+        data_size (int): Number of entries to use from the dataset
+        batch_size (int): Size of each batch
+        splits ([float]): List of four fractions for different splits
+        epochs (int): Number of training epochs
+        gpu (bool): Whether to train on the GPU
+        regressor_layers ([int]): Layer sizes of regressor if no file provided
+        regressor_activations ([f()->nn.Module]): List of activation functions
+    '''
     experiment_data = locals()
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
     log_file = "log_"+experiment_time+".log"
@@ -61,7 +79,7 @@ def run_lunarlander_experiment(
     else:
         regressor = torch.load(load_regressor_file)
 
-    if GPU:
+    if gpu:
         encoder.cuda()
         regressor.cuda()
 
@@ -74,7 +92,6 @@ def run_lunarlander_experiment(
                 code_batch = encoder.encode(img_batch)
                 if gpu:
                     code_batch[0].cuda()
-                    code_batch[1].cuda()
                 split["encodings"].append(code_batch[0])
             new_observations = []
             for i, obs_batch in enumerate(split["observations"]):
