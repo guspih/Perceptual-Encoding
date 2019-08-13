@@ -127,11 +127,11 @@ def stl10_experiment(
             split["encodings"] = []
             for i, img_batch in enumerate(split["imgs"]):
                 if gpu:
-                    img_batch.cuda()
+                    img_batch = img_batch.cuda()
                 code_batch = encoder.encode(img_batch)
                 if gpu:
-                    code_batch.cpu()
-                    img_batch.cpu()
+                    code_batch = (code_batch[0].cpu(), code_batch[1].cpu())
+                    img_batch = img_batch.cpu()
                 split["encodings"].append(code_batch[0])
 
     # Initialize optimizer and loss functions for classifier
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     DATA_FILE = UNLABELED_DATA_PATH
     EXPERIMENT_NAME = "STL10"
     NETWORK = FourLayerCVAE
-    EPOCHS = 10
+    EPOCHS = 4
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
     SPLITS = [0.4, 0.1]

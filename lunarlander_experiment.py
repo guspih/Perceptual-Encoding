@@ -90,11 +90,11 @@ def run_lunarlander_experiment(
             split["encodings"] = []
             for i, img_batch in enumerate(split["imgs"]):
                 if gpu:
-                    img_batch.cuda()
+                    img_batch = img_batch.cuda()
                 code_batch = encoder.encode(img_batch)
                 if gpu:
-                    code_batch.cpu()
-                    img_batch.cpu()
+                    code_batch = code_batch.cpu()
+                    img_batch = img_batch.cpu()
                 split["encodings"].append(code_batch[0])
             new_observations = []
             for i, obs_batch in enumerate(split["observations"]):
