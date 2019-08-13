@@ -89,9 +89,12 @@ def run_lunarlander_experiment(
         for split in [train1, train2, validation, test]:
             split["encodings"] = []
             for i, img_batch in enumerate(split["imgs"]):
+                if gpu:
+                    img_batch.cuda()
                 code_batch = encoder.encode(img_batch)
                 if gpu:
-                    code_batch[0].cuda()
+                    code_batch.cpu()
+                    img_batch.cpu()
                 split["encodings"].append(code_batch[0])
             new_observations = []
             for i, obs_batch in enumerate(split["observations"]):
@@ -104,7 +107,7 @@ def run_lunarlander_experiment(
 
     regressor_file = load_regressor_file
     if epochs != 0 or load_regressor_file == None:
-        regressor_file = run_training(
+        regressor, regressor_file = run_training(
             model = regressor,
             train_data = (train2["encodings"], train2["observations"]),
             val_data = (validation["encodings"], validation["observations"]),

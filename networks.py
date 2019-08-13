@@ -64,6 +64,7 @@ def run_epoch(network, data, labels, loss, optimizer,
 ):
     '''
     Trains a given network for one epoch
+    Will automatically move data to gpu if model is on the gpu
 
     Args:
         network (nn.Module): The network to be trained
@@ -77,6 +78,7 @@ def run_epoch(network, data, labels, loss, optimizer,
     Returns: (float) The sum of loss of the epoch
     '''
     start_time = time.time()
+    gpu = next(network.parameters()).is_cuda
 
     if train:
         network.train()
@@ -85,6 +87,9 @@ def run_epoch(network, data, labels, loss, optimizer,
     batches = list(zip(data, labels))
     epoch_losses = []
     for batch_id, (batch_data, batch_labels) in enumerate(batches):
+        if gpu:
+            batch_data = batch_data.cuda()
+            batch_labels = batch_labels.cuda()
         optimizer.zero_grad()
         output = network(batch_data)
         losses = loss(output, batch_labels)
@@ -99,6 +104,9 @@ def run_epoch(network, data, labels, loss, optimizer,
         losses[0].backward()
         if train:
             optimizer.step()
+        if gpu:
+            batch_data = batch_data.cpu()
+            batch_labels = batch_labels.cpu()
         print(
             "\r{} - [{}/{}] - Losses: {}, Time passed: {}s".format(
                 epoch_name, batch_id+1, len(batches),
@@ -127,7 +135,7 @@ def run_training(model, train_data, val_data, loss,
         epoch_update (f(epoch, train_loss, val_loss) -> bool): Function to run
             at the end of a epoch. Returns whether to early stop
 
-    Returns (str): The filepath to the new model
+    Returns (nn.Module, str): The trained model and its new filepath
     '''
 
     save_file = (
@@ -159,7 +167,8 @@ def run_training(model, train_data, val_data, loss,
             if early_stop:
                 break
 
-    return save_file
+    model = torch.load(save_file)
+    return model, save_file
 
 class PrintLogger():
     '''

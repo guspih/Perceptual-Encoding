@@ -76,11 +76,11 @@ def stl10_experiment(
     else:
         unlabeled_data = {"imgs" : read_stl_images(UNLABELED_DATA_PATH)}
         unlabeled_data = dict_to_batches(
-            unlabeled_data, data_size, batch_size, splits, gpu
+            unlabeled_data, data_size, batch_size, splits
         )
         encoder, _ = train_autoencoder(
             unlabeled_data, encoder, 100,
-            input_size=(96,96), z_dimensions=1024, gpu=gpu,
+            input_size=(96,96), z_dimensions=256, gpu=gpu,
             save_path=save_path
         )
     
@@ -105,8 +105,7 @@ def stl10_experiment(
         stl_train,
         data_size=len(stl_train["imgs"]),
         batch_size=min(len(stl_train["imgs"]),1000),
-        split_distribution=splits,
-        gpu=gpu
+        split_distribution=splits
     )
 
     stl_test = {
@@ -117,8 +116,7 @@ def stl10_experiment(
         stl_test,
         data_size=len(stl_test["imgs"]),
         batch_size=len(stl_test["imgs"]),
-        split_distribution=[1],
-        gpu=gpu
+        split_distribution=[1]
     )
 
     # Generate encodings
@@ -128,9 +126,12 @@ def stl10_experiment(
         for split in [train_data, validation_data, test_data]:
             split["encodings"] = []
             for i, img_batch in enumerate(split["imgs"]):
+                if gpu:
+                    img_batch.cuda()
                 code_batch = encoder.encode(img_batch)
                 if gpu:
-                    code_batch[0].cuda()
+                    code_batch.cpu()
+                    img_batch.cpu()
                 split["encodings"].append(code_batch[0])
 
     # Initialize optimizer and loss functions for classifier
@@ -140,7 +141,7 @@ def stl10_experiment(
 
     # Train classifier
     if epochs != 0 or not isinstance(classifier, str):
-        run_training(
+        classifier, classifier_path = run_training(
             model = classifier, 
             train_data = (train_data["encodings"], train_data["labels"]), 
             val_data = (validation_data["encodings"], validation_data["labels"]), 
@@ -171,12 +172,12 @@ def stl10_experiment(
 if __name__ == "__main__":
     DATA_FILE = UNLABELED_DATA_PATH
     EXPERIMENT_NAME = "STL10"
-    NETWORK = "stl10_experiments/FourLayerCVAE_2019-07-09_16h03.pt"
-    EPOCHS = 100
+    NETWORK = FourLayerCVAE
+    EPOCHS = 10
     DATA_SIZE = 50000
     BATCH_SIZE = 1000
     SPLITS = [0.4, 0.1]
-    Z_DIMENSIONS = 64
+    Z_DIMENSIONS = 256
     VARIATIONAL = False
     GAMMA = 0.001
     PERCEPTUAL_LOSS = False
@@ -185,15 +186,26 @@ if __name__ == "__main__":
     SAVE_PATH = "stl10_experiments"
     INPUT_SIZE = (96,96)
     TRAIN_ONLY_DECODER = True
+    CLASSIFIER_LAYERS = [64,16,10]
+    CLASSIFIER_ACTIVATIONS = [nn.ReLU, nn.ReLU, nn.Softmax]
 
-    stl10_experiment(FourLayerCVAE, [1024,512,128,10], gpu=True, batch_size=1000, data_size=50000, epochs=100)
+    data = {"imgs" : read_stl_images(UNLABELED_DATA_PATH)}
+    
+    data = dict_to_batches(data, DATA_SIZE, BATCH_SIZE, SPLITS)
 
-    # data = {"imgs" : read_stl_images(UNLABELED_DATA_PATH)}
-    # 
-    # data = dict_to_batches(data, DATA_SIZE, BATCH_SIZE, SPLITS, GPU)
-    #
-    # train_autoencoder(
-    #     data, NETWORK, EPOCHS, EXPERIMENT_NAME, INPUT_SIZE,
-    #     Z_DIMENSIONS, VARIATIONAL, GAMMA, PERCEPTUAL_LOSS,
-    #     GPU, DISPLAY, SAVE_PATH, TRAIN_ONLY_DECODER
-    # )
+    model, path = train_autoencoder(
+        data, NETWORK, EPOCHS, EXPERIMENT_NAME, INPUT_SIZE,
+        Z_DIMENSIONS, VARIATIONAL, GAMMA, PERCEPTUAL_LOSS,
+        GPU, DISPLAY, SAVE_PATH, TRAIN_ONLY_DECODER
+    )
+
+    stl10_experiment(
+        path,
+        CLASSIFIER_LAYERS,
+        gpu=GPU,
+        batch_size=BATCH_SIZE,
+        data_size=DATA_SIZE,
+        epochs=1000,
+        classifier_activations=CLASSIFIER_ACTIVATIONS
+    )
+

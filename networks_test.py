@@ -41,10 +41,11 @@ def show_recreation(data, model, epoch=0, batch=0, block=False, save=None):
         save (str / None): Path to save the image under. Will not save if None
     '''
     r = torch.tensor([random.choice(range(data[batch].size(0)))])
-    if data[batch].is_cuda:
-        r = r.cuda()
+
     with torch.no_grad():
         img1 = torch.index_select(data[batch], 0, r)
+        if next(model.parameters()).is_cuda:
+            img1 = img1.cuda()
         img2, z, mu, logvar = model(img1)
     show(
         [img1.cpu(),img2.cpu()], block=block, save=save,
@@ -52,7 +53,7 @@ def show_recreation(data, model, epoch=0, batch=0, block=False, save=None):
     )
 
 def dict_to_batches(
-    data, data_size, batch_size, split_distribution, gpu=False
+    data, data_size, batch_size, split_distribution
 ):
     '''
     Takes a dict of data with images in "imgs" and creates batches of dicts
@@ -62,7 +63,6 @@ def dict_to_batches(
         data_size (int): How many entries will be used
         batch_size (int): Size of batches (data_size must be divisible by this)
         split_distribution ([float]): List of fractions of data split
-        gpu (bool): Whether data will be used on the GPU
 
     Returns ([{[data]}]): List of splits as dicts where the entries are batched
     '''
@@ -85,8 +85,6 @@ def dict_to_batches(
         ):
             value = np.array(value, dtype=np.float32)
             value = [torch.from_numpy(batch) for batch in value]
-            if gpu:
-                value = [batch.cuda() for batch in value]
         data[key] = value
 
     split_sum = sum(split_distribution)
@@ -113,7 +111,7 @@ def dict_to_batches(
     return splits
 
 def load_npz_data(data_file, data_size, batch_size,
-    split_distribution=[0.8,0.2], gpu=False
+    split_distribution=[0.8,0.2]
 ):
     '''
     Loads data from an .npz file
@@ -126,7 +124,6 @@ def load_npz_data(data_file, data_size, batch_size,
         data_size (int): Amount of data to load
         batch_size (int): How much data will be stored in each batch
         split_distribution ([float]): List of fractions of data split
-        gpu (bool): Whether data will be used on the GPU
 
     Returns ([{data}]): A list of dicts where each dict is a batch
     '''
@@ -137,7 +134,7 @@ def load_npz_data(data_file, data_size, batch_size,
     if "imgs" in data:
         data["imgs"] = np.transpose(data["imgs"], (0,3,1,2))
 
-    return dict_to_batches(data, data_size, batch_size, split_distribution, gpu)
+    return dict_to_batches(data, data_size, batch_size, split_distribution)
 
 def train_autoencoder(data, network, epochs, experiment_name="",
     input_size=(64,64), z_dimensions=32, variational=False, gamma=0.001,
@@ -215,7 +212,7 @@ def train_autoencoder(data, network, epochs, experiment_name="",
                 save_path
             )
         )   
-        model_file = run_training(
+        model, model_file = run_training(
             model = model,
             train_data = (train_data, train_data),
             val_data = (validation_data, validation_data),
