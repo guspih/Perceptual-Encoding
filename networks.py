@@ -104,9 +104,6 @@ def run_epoch(network, data, labels, loss, optimizer,
         losses[0].backward()
         if train:
             optimizer.step()
-        if gpu:
-            batch_data = batch_data.cpu()
-            batch_labels = batch_labels.cpu()
         print(
             "\r{} - [{}/{}] - Losses: {}, Time passed: {}s".format(
                 epoch_name, batch_id+1, len(batches),
@@ -135,7 +132,7 @@ def run_training(model, train_data, val_data, loss,
         epoch_update (f(epoch, train_loss, val_loss) -> bool): Function to run
             at the end of a epoch. Returns whether to early stop
 
-    Returns (nn.Module, str): The trained model and its new filepath
+    Returns (nn.Module, str, float): The model, filepath, and validation loss
     '''
 
     save_file = (
@@ -168,7 +165,7 @@ def run_training(model, train_data, val_data, loss,
                 break
 
     model = torch.load(save_file)
-    return model, save_file
+    return model, save_file, best_validation_loss
 
 class PrintLogger():
     '''
@@ -363,7 +360,7 @@ def dense_net(input_size, layers, activation_functions):
         ]
 
     network = nn.Sequential()
-    layers = [input_size] + layers
+    layers.insert(0,input_size)
     for layer_id in range(len(layers)-1):
         network.add_module(
             'linear{}'.format(layer_id),

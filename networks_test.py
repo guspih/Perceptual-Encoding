@@ -136,10 +136,10 @@ def load_npz_data(data_file, data_size, batch_size,
 
     return dict_to_batches(data, data_size, batch_size, split_distribution)
 
-def train_autoencoder(data, network, epochs, experiment_name="",
-    input_size=(64,64), z_dimensions=32, variational=False, gamma=0.001,
-    perceptual_loss=False, gpu=False, display=False,
-    save_path="autoencoder_checkpoints", train_only_decoder=False
+def train_autoencoder(data, network, epochs, input_size=(64,64),
+    z_dimensions=32, variational=False, gamma=0.001, perceptual_loss=False,
+    gpu=False, display=False, save_path="autoencoder_checkpoints",
+    train_only_decoder=False
 ):
     '''
     Trains an image autoencoder with data in dicts with images in key "imgs"
@@ -148,7 +148,6 @@ def train_autoencoder(data, network, epochs, experiment_name="",
         data ([{train},{validation}]): Batched dicts with images in key "imgs"
         network (f()->nn.Module / str): Class or path to a network to train
         epochs (int): Number of epochs to run
-        experiment_name (str): Name of experiment
         input_size (int,int): Height and width of images
         z_dimensions (int): Number of latent dimensions for encoding
         variational (bool): Whether to train the network as a variational AE
@@ -212,7 +211,7 @@ def train_autoencoder(data, network, epochs, experiment_name="",
                 save_path
             )
         )   
-        model, model_file = run_training(
+        model, model_file, val_loss = run_training(
             model = model,
             train_data = (train_data, train_data),
             val_data = (validation_data, validation_data),
@@ -256,7 +255,6 @@ if __name__ == "__main__":
     '''
 
     DATA_FILE = "LunarLander-v2_105000_Dataset.npz"
-    EXPERIMENT_NAME = "LunarLander"
     NETWORK = FourLayerCVAE
     EPOCHS = 100
     DATA_SIZE = 50000
@@ -277,7 +275,7 @@ if __name__ == "__main__":
     )
 
     train_autoencoder(
-        DATA, NETWORK, EPOCHS, EXPERIMENT_NAME, INPUT_SIZE,
+        DATA, NETWORK, EPOCHS, INPUT_SIZE,
         Z_DIMENSIONS, VARIATIONAL, GAMMA, PERCEPTUAL_LOSS,
         GPU, DISPLAY, SAVE_PATH, TRAIN_ONLY_DECODER
     )
