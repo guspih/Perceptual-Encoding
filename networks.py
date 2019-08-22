@@ -7,6 +7,7 @@ import torch.nn as nn
 import datetime
 import time
 import sys
+import os
 
 
 def _create_coder(channels, kernel_sizes, strides, conv_types,
@@ -328,6 +329,7 @@ class AlexNet(nn.Module):
     '''
     def __init__(self, layer=5, frozen=True, sigmoid_out=True):
         super(AlexNet, self).__init__()
+        os.environ['TORCH_MODEL_ZOO'] = './model_zoo'
         original_model = models.alexnet(pretrained=True)
         self.features = nn.Sequential(
             *list(original_model.features.children())[:layer]
