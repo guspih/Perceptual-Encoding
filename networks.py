@@ -307,8 +307,8 @@ class FourLayerCVAE(nn.Module):
             x = self.alexnet(x)
             rec_x = self.alexnet(rec_x)
         else:
-            x = x.reshape(-1, 64 * 64 * 3)
-            rec_x = rec_x.view(-1, 64 * 64 * 3)
+            x = x.reshape(-1, self.input_size[0] * self.input_size[1] * 3)
+            rec_x = rec_x.view(-1, self.input_size[0] * self.input_size[1] * 3)
         REC = F.mse_loss(rec_x, x, reduction='mean')
 
         if self.variational:

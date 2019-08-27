@@ -271,7 +271,7 @@ if __name__ == "__main__":
     TRAIN_ONLY_DECODER = False
 
     DATA = load_npz_data(
-        DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS, gpu=GPU
+        DATA_FILE, DATA_SIZE, BATCH_SIZE, split_distribution=SPLITS
     )
 
     train_autoencoder(

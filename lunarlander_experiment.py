@@ -45,13 +45,9 @@ def run_lunarlander_experiment(
     '''
     experiment_data = locals()
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
-    log_file = "log_"+experiment_time+".log"
     if save_path != "":
         if not os.path.isdir(save_path):
             os.mkdir(save_path)
-        log_file = save_path+"/"+log_file
-    PrintLogger([log_file])
-    experiment_data["log_file"] = log_file
 
     print("Starting LunarLander-v2 regression experiment...")
 
