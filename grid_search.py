@@ -56,8 +56,8 @@ def grid_search(
     # Set variables
     data_size = 90000
     batch_size = 1000
-    encoder_epochs = 1 #100
-    predictor_epochs = 1 #1000
+    encoder_epochs = 100
+    predictor_epochs = 1000
     gpu = torch.cuda.is_available()
 
     # Load experiment relevant information
@@ -127,7 +127,7 @@ def grid_search(
 
     #Store the results
 
-    with open("grid_search_" + experiment, "a+") as f:
+    with open("grid_search_" + experiment + ".csv", "a+") as f:
         f.write(str(results))
 
 if __name__ == "__main__":

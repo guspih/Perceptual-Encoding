@@ -116,8 +116,14 @@ def run_lunarlander_experiment(
         )
 
     experiment_data["regressor_file"] = regressor_file
-    experiment_data["encoder"] = encoder
-    experiment_data["regressor"] = regressor
+    experiment_data["encoder_perceptual"] = encoder.perceptual_loss
+    experiment_data["encoder_variational"] = encoder.variational
+    experiment_data["encoder_z_dimensions"] = encoder.z_dimensions
+    experiment_data["encoder_gamma"] = encoder.gamma
+    del experiment_data["encoder"]
+    del experiment_data["regressor"]
+    #experiment_data["encoder"] = encoder
+    #experiment_data["regressor"] = regressor
 
     test_losses = lambda output, target : [
             loss_function(output, target),
