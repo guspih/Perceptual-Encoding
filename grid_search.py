@@ -33,7 +33,7 @@ def generate_dense_architectures(hidden_sizes, hidden_nrs):
     return [list(arch) for arch in archs]
 
 def grid_search(
-    experiment="lunarlander", z_dims=[32,64,128,256], gammas=[0,0.001,0.01],
+    experiment="lunarlander", z_dims=[64,128,256,512], gammas=[0,0.001,0.01],
     predictor_hidden_sizes=[32,64,128], predictor_hidden_nrs=[0,1,2],
     predictor_hidden_funcs=[nn.LeakyReLU, nn.Sigmoid],
     predictor_out_func=[None] 
@@ -119,8 +119,12 @@ def grid_search(
         )
 
         results[(
-            tuple(encoder_etc), 
-            tuple(architecture), 
+            encoder_path,
+            z_dim,
+            gamma,
+            perceptual,
+            variational,
+            tuple(architecture),
             hidden_func, 
             out_func
         )] = experiment_data
@@ -132,4 +136,4 @@ def grid_search(
 
 if __name__ == "__main__":
 
-    grid_search()
+    grid_search(experiment="stl10")
