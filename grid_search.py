@@ -55,7 +55,7 @@ def grid_search(
 
     # Set variables
     data_size = 90000
-    batch_size = 1000
+    batch_size = 500
     encoder_epochs = 100
     predictor_epochs = 1000
     gpu = torch.cuda.is_available()
@@ -136,4 +136,4 @@ def grid_search(
 
 if __name__ == "__main__":
 
-    grid_search(experiment="stl10")
+    grid_search(experiment="stl10", predictor_out_func=[None, nn.Softmax])
