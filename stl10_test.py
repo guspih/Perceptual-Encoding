@@ -80,13 +80,9 @@ def stl10_experiment(
     # Prepare experiment recording
     experiment_data = locals()
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%Hh%M")
-    log_file = "log_"+experiment_time+".log"
     if save_path != "":
         if not os.path.isdir(save_path):
             os.mkdir(save_path)
-        log_file = save_path+"/"+log_file
-    PrintLogger([log_file])
-    experiment_data["log_file"] = log_file
 
     # Load encoder from file or train from scratch
     if isinstance(encoder, str):
@@ -114,8 +110,7 @@ def stl10_experiment(
         )
      
     if gpu:
-        encoder.cuda()
-        classifier.cuda()
+        encoder.cuda() 
 
     # Load training and test data
     stl_train = {
@@ -154,6 +149,12 @@ def stl10_experiment(
                     code_batch = (code_batch[0].cpu(), code_batch[1].cpu())
                     img_batch = img_batch.cpu()
                 split["encodings"].append(code_batch[0])
+    
+    #Clean encoder and images
+    encoder = None
+
+    if gpu:
+        classifier.cuda()
 
     # Initialize optimizer and loss functions for classifier
     optimizer = torch.optim.Adam(classifier.parameters())
@@ -191,9 +192,15 @@ def stl10_experiment(
 
     # Store experiment data
     experiment_data["encoder_file"] = encoder_file
-    experiment_data["encoder"] = encoder
+    #experiment_data["encoder"] = encoder
     experiment_data["classifier_file"] = classifier_file
-    experiment_data["classifier"] = classifier
+    #experiment_data["classifier"] = classifier
+    del experiment_data["classifier"]
+    del experiment_data["encoder"]
+    experiment_data["encoder_perceptual"] = encoder.perceptual_loss
+    experiment_data["encoder_variational"] = encoder.variational
+    experiment_data["encoder_z_dimensions"] = encoder.z_dimensions
+    experiment_data["encoder_gamma"] = encoder.gamma
     experiment_data["test_loss"] = losses[0]
     experiment_data["test_accuracy"] = losses[2]
     experiment_data["val_loss"] = val_loss
@@ -243,4 +250,3 @@ if __name__ == "__main__":
         epochs=400,
         classifier_activations=CLASSIFIER_ACTIVATIONS
     )
-
