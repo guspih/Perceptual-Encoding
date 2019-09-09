@@ -55,7 +55,8 @@ def grid_search(
 
     # Set variables
     data_size = 90000
-    batch_size = 500
+    encoder_batch_size = 500
+    predictor_batch_size = 100
     encoder_epochs = 100
     predictor_epochs = 1000
     gpu = torch.cuda.is_available()
@@ -65,7 +66,7 @@ def grid_search(
         encoder_data = load_npz_data(
             "LunarLander-v2_105000_Dataset.npz",
             data_size,
-            batch_size,
+            encoder_batch_size,
             [0.8, 0.2]
         )
         experiment_function = run_lunarlander_experiment
@@ -77,7 +78,7 @@ def grid_search(
             "imgs" : read_stl_images("stl-10/data/stl10_binary/unlabeled_X.bin")
             }
         encoder_data = dict_to_batches(
-            encoder_data, data_size, batch_size, [0.8, 0.2]
+            encoder_data, data_size, encoder_batch_size, [0.8, 0.2]
         )
         experiment_function = stl10_experiment
         input_size = (96,96)
@@ -114,7 +115,7 @@ def grid_search(
         architecture.append(output_size)
         act_functs = [hidden_func]*(len(architecture)-1) + [out_func]
         experiment_data = experiment_function(
-            encoder_path, architecture, save_path, data_size, batch_size,
+            encoder_path, architecture, save_path, data_size, predictor_batch_size,
             predictor_epochs, gpu, act_functs
         )
 
