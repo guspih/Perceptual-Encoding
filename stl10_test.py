@@ -250,4 +250,3 @@ if __name__ == "__main__":
         epochs=400,
         classifier_activations=CLASSIFIER_ACTIVATIONS
     )
-
