@@ -195,8 +195,6 @@ def stl10_experiment(
     #experiment_data["encoder"] = encoder
     experiment_data["classifier_file"] = classifier_file
     #experiment_data["classifier"] = classifier
-    del experiment_data["classifier"]
-    del experiment_data["encoder"]
     experiment_data["encoder_perceptual"] = encoder.perceptual_loss
     experiment_data["encoder_variational"] = encoder.variational
     experiment_data["encoder_z_dimensions"] = encoder.z_dimensions
@@ -204,6 +202,8 @@ def stl10_experiment(
     experiment_data["test_loss"] = losses[0]
     experiment_data["test_accuracy"] = losses[2]
     experiment_data["val_loss"] = val_loss
+    del experiment_data["classifier"]
+    del experiment_data["encoder"]
 
     with open(EXPERIMENTS_PATH+"/"+EXPERIMENTS_FILE, "a+") as f:
         f.write("Experiment at {}\n".format(experiment_time).replace("_", " "))
