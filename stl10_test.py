@@ -151,6 +151,10 @@ def stl10_experiment(
                 split["encodings"].append(code_batch[0])
     
     #Clean encoder and images
+    experiment_data["encoder_perceptual"] = encoder.perceptual_loss
+    experiment_data["encoder_variational"] = encoder.variational
+    experiment_data["encoder_z_dimensions"] = encoder.z_dimensions
+    experiment_data["encoder_gamma"] = encoder.gamma
     encoder = None
 
     if gpu:
@@ -195,10 +199,6 @@ def stl10_experiment(
     #experiment_data["encoder"] = encoder
     experiment_data["classifier_file"] = classifier_file
     #experiment_data["classifier"] = classifier
-    experiment_data["encoder_perceptual"] = encoder.perceptual_loss
-    experiment_data["encoder_variational"] = encoder.variational
-    experiment_data["encoder_z_dimensions"] = encoder.z_dimensions
-    experiment_data["encoder_gamma"] = encoder.gamma
     experiment_data["test_loss"] = losses[0]
     experiment_data["test_accuracy"] = losses[2]
     experiment_data["val_loss"] = val_loss
