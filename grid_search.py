@@ -9,7 +9,7 @@ import os
 import csv
 import sys
 from itertools import combinations_with_replacement, product
-from networks import FourLayerCVAE, PrintLogger
+from networks import FourLayerCVAE, PrintLogger, AlexNet
 from networks import run_epoch, run_training, dense_net
 from networks_test import train_autoencoder, dict_to_batches, load_npz_data
 from lunarlander_experiment import run_lunarlander_experiment
@@ -98,6 +98,14 @@ def grid_search(
         )
         encoders_etc.append((model_path, z_dim, gamma, perceptual, variational))
     
+    # Add feature extraction from AlexNet as encoding baseline
+    for extraction_layer in range(5, 13):
+        alexnet = AlexNet(layer=extraction_layer, frozen=True, sigmoid_out=True)
+        alexnet_path = "alexnet_layer{}.pt".format(extraction_layer)
+        torch.save(alexnet, alexnet_path)
+        test_y = alexnet(torch.randn(1,3,input_size[0], input_size[1]))
+        encoders_etc.append((alexnet_path, test_y.size()[1], None, None, None))
+    
     # Dereference unnecessary data to free up space
     encoder_data = None
 
@@ -119,6 +127,8 @@ def grid_search(
             predictor_epochs, gpu, act_functs
         )
 
+        #experiment_data["encoder_val_loss"] = 
+
         results[(
             encoder_path,
             z_dim,
@@ -132,7 +142,7 @@ def grid_search(
 
     #Store the results
 
-    with open("grid_search_" + experiment + ".csv", "a+") as f:
+    with open("grid_search_" + experiment + ".csv", "w") as f:
         f.write(str(results))
 
 if __name__ == "__main__":
