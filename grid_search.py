@@ -102,10 +102,14 @@ def grid_search(
     for extraction_layer in range(5, 13):
         alexnet = AlexNet(layer=extraction_layer, frozen=True, sigmoid_out=True)
         alexnet_path = "alexnet_layer{}.pt".format(extraction_layer)
-        torch.save(alexnet, alexnet_path)
         test_y = alexnet(torch.randn(1,3,input_size[0], input_size[1]))
-        encoders_etc.append((alexnet_path, test_y.size()[1], None, None, None))
-    
+        alexnet.z_dimensions = test_y.size()[1]
+        alexnet.variational = None
+        alexnet.perceptual_loss = None
+        alexnet.gamma = None
+        torch.save(alexnet, alexnet_path)
+        encoders_etc.append((alexnet_path, alexnet.z_dimensions, None, None, None))
+
     # Dereference unnecessary data to free up space
     encoder_data = None
 

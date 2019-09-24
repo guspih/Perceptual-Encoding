@@ -137,7 +137,7 @@ def run_training(model, train_data, val_data, loss,
     '''
 
     save_file = (
-        model. __class__.__name__ + 
+        model.__class__.__name__ + 
         datetime.datetime.now().strftime("_%Y-%m-%d_%Hh%M.pt")
     )
     if save_path != "":
@@ -343,6 +343,9 @@ class AlexNet(nn.Module):
         x = self.features(x)
         x = x.view(x.size(0), -1)
         return x
+    
+    def encode(self, x):
+        return self.forward(x)
 
 def dense_net(input_size, layers, activation_functions):
     '''
