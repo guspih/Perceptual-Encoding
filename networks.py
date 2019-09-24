@@ -345,7 +345,8 @@ class AlexNet(nn.Module):
         return x
     
     def encode(self, x):
-        return self.forward(x)
+        y = self.forward(x)
+        return y, torch.zeros(y.size())
 
 def dense_net(input_size, layers, activation_functions):
     '''
