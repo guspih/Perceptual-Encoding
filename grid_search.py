@@ -14,6 +14,7 @@ from networks import run_epoch, run_training, dense_net
 from networks_test import train_autoencoder, dict_to_batches, load_npz_data
 from lunarlander_experiment import run_lunarlander_experiment
 from stl10_test import stl10_experiment, read_stl_images, read_stl_labels
+from svhn_test import svhn_experiment, read_svhn_data
 
 def generate_dense_architectures(hidden_sizes, hidden_nrs):
     '''
@@ -33,7 +34,7 @@ def generate_dense_architectures(hidden_sizes, hidden_nrs):
     return [list(arch) for arch in archs]
 
 def grid_search(
-    experiment="lunarlander", z_dims=[64,128,256,512], gammas=[0,0.001,0.01],
+    experiment="lunarlander", z_dims=[32,64,128], gammas=[0,0.001,0.01],
     predictor_hidden_sizes=[32,64,128], predictor_hidden_nrs=[0,1,2],
     predictor_hidden_funcs=[nn.LeakyReLU, nn.Sigmoid],
     predictor_out_func=[None] 
@@ -83,6 +84,15 @@ def grid_search(
         experiment_function = stl10_experiment
         input_size = (96,96)
         save_path = "stl10_experiments"
+        output_size = 10
+    elif experiment == "svhn":
+        encoder_data, _  = read_svhn_data("svhn/extra_32x32.mat")
+        encoder_data = dict_to_batches(
+            encoder_data, data_size, encoder_batch_size, [0.8, 0.2]
+        )
+        experiment_function = svhn_experiment
+        input_size = (64,64)
+        save_path = "svhn_experiments"
         output_size = 10
 
     # Train and store paths to all encoder models 
@@ -150,5 +160,4 @@ def grid_search(
         f.write(str(results))
 
 if __name__ == "__main__":
-
-    grid_search(experiment="stl10", predictor_out_func=[None, nn.Softmax])
+    grid_search(experiment="svhn", predictor_out_func=[None, nn.Softmax])

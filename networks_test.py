@@ -53,7 +53,7 @@ def show_recreation(data, model, epoch=0, batch=0, block=False, save=None):
     )
 
 def dict_to_batches(
-    data, data_size, batch_size, split_distribution
+    data, data_size, batch_size, split_distribution, uneven_batches=False
 ):
     '''
     Takes a dict of data with images in "imgs" and creates batches of dicts
@@ -63,12 +63,16 @@ def dict_to_batches(
         data_size (int): How many entries will be used
         batch_size (int): Size of batches (data_size must be divisible by this)
         split_distribution ([float]): List of fractions of data split
+        uneven_batches (bool): Whether the batches can have different sizes
 
     Returns ([{[data]}]): List of splits as dicts where the entries are batched
     '''
-
-    assert data_size % batch_size == 0, \
-        "data_size must be divisble by batch_size"
+    if not uneven_batches:
+        assert data_size % batch_size == 0, \
+            "data_size must be divisble by batch_size"
+        split = np.split
+    else:
+        split = np.array_split
 
     for key, value in data.items():
         if key[:9] == "parameter":
@@ -78,13 +82,12 @@ def dict_to_batches(
         value = value[:data_size]
         if key == "imgs":
             value = np.array(value, dtype=np.float32)
-        value = np.split(value, data_size/batch_size)
+        value = split(value, data_size/batch_size)
         if (
             isinstance(value[0], np.ndarray) and 
             value[0].dtype.kind in ["f","u","i"]
         ):
-            value = np.array(value, dtype=np.float32)
-            value = [torch.from_numpy(batch) for batch in value]
+            value = [torch.from_numpy(np.array(batch, dtype=np.float32)) for batch in value]
         data[key] = value
 
     split_sum = sum(split_distribution)
