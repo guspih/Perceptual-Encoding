@@ -14,7 +14,24 @@ import os
 import csv
 import sys
 
-ENCODER_LIST = []
+ENCODER_LIST = [
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_10h49.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_12h47.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_11h17.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_12h16.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_13h45.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_15h44.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_14h13.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_15h12.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_16h43.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_17h42.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_17h11.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_18h11.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_19h42.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_21h42.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_20h10.pt",
+    "lunarlander_experiments/FourLayerCVAE_2019-09-03_21h10.pt",
+]
 EXPERIMENT = "lunarlander"
 
 
@@ -97,7 +114,7 @@ for encoder in ENCODER_LIST:
         network = encoder,
         data = encoder_test[0],
         labels = encoder_test[0],
-        loss = encoder.loss,
+        loss = loss,
         optimizer = None
     )
     l1_loss = l1_loss/len(encoder_test[0])
