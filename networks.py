@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torchvision.models as models
 from torch.nn import functional as F
+from torchsummary import summary
 import torch.nn as nn
 import datetime
 import time
@@ -378,3 +379,21 @@ def dense_net(input_size, layers, activation_functions):
                 activation_functions[layer_id]()
             )
     return network
+
+if __name__ == "__main__":
+    model64 = FourLayerCVAE(
+        input_size=(64,64),
+        z_dimensions=32,
+        variational=False,
+        gamma=0,
+        perceptual_loss=False
+    )
+    model96 = FourLayerCVAE(
+        input_size=(96,96),
+        z_dimensions=64,
+        variational=False,
+        gamma=0,
+        perceptual_loss=False
+    )
+    summary(model64, (3,64,64))
+    summary(model96, (3,96,96))

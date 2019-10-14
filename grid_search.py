@@ -88,7 +88,7 @@ def grid_search(
     elif experiment == "svhn":
         encoder_data, _  = read_svhn_data("svhn/extra_32x32.mat")
         encoder_data = dict_to_batches(
-            encoder_data, data_size, encoder_batch_size, [0.8, 0.2]
+            {"imgs" : encoder_data}, data_size, encoder_batch_size, [0.8, 0.2]
         )
         experiment_function = svhn_experiment
         input_size = (64,64)

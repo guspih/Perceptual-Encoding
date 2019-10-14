@@ -45,7 +45,6 @@ def read_svhn_data(path_to_data):
     labels = labels.reshape((-1))
     labels = labels-1
     labels = np.eye(10)[labels]
-    print(labels.shape)
     return images, labels
 
 def svhn_experiment(
