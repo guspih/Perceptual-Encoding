@@ -89,7 +89,7 @@ for encoder in ENCODER_LIST:
     model = torch.load(encoder, map_location="cpu")
     variational = model.variational
     gamma = model.gamma
-    perceptual = model.perceptual
+    perceptual = model.perceptual_loss
     z_dims = model.z_dimensions
     model = None
     model, model_file = train_autoencoder(
