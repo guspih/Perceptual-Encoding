@@ -395,5 +395,8 @@ if __name__ == "__main__":
         gamma=0,
         perceptual_loss=False
     )
+    alexnet = AlexNet()
     summary(model64, (3,64,64))
     summary(model96, (3,96,96))
+    summary(alexnet, (3,64,64))
+    summary(alexnet, (3,96,96))

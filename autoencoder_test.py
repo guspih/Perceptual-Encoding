@@ -66,9 +66,18 @@ elif EXPERIMENT == "stl10":
     input_size = (96,96)
     save_path = "stl10_experiments"
 elif EXPERIMENT == "svhn":
-    encoder_data, _  = read_svhn_data("svhn/extra_32x32.mat")
+    encoder_data, _ = read_svhn_data("svhn/extra_32x32.mat")
     encoder_data = dict_to_batches(
         {"imgs" : encoder_data}, 90000, 500, [0.8, 0.2]
+    )
+    encoder_test, _ = read_svhn_data("svhn/test_32x32.mat")
+    encoder_test = {"imgs" : encoder_test}
+    encoder_test, = dict_to_batches(
+        encoder_test,
+        data_size=len(encoder_test["imgs"]),
+        batch_size=500,
+        split_distribution=[1],
+        uneven_batches=True
     )
     input_size = (64,64)
     save_path = "svhn_experiments"
@@ -111,9 +120,9 @@ for encoder in ENCODER_LIST:
         mse(output, target)
     ]
     l1_loss, mse_loss = run_epoch(
-        network = encoder,
-        data = encoder_test[0],
-        labels = encoder_test[0],
+        network = model,
+        data = encoder_test[0]["imgs"],
+        labels = encoder_test[0]["imgs"],
         loss = loss,
         optimizer = None
     )
