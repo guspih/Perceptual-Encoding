@@ -124,7 +124,7 @@ for encoder in ENCODER_LIST:
         data = encoder_test[0]["imgs"],
         labels = encoder_test[0]["imgs"],
         loss = loss,
-        optimizer = optimimizer
+        optimizer = optimizer
     )
     l1_loss = l1_loss/len(encoder_test[0])
     mse_loss = mse_loss/len(encoder_test[0])
