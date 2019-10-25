@@ -15,7 +15,7 @@ import csv
 import sys
 
 
-EXPERIMENT = "stl10"
+EXPERIMENT = "lunarlander"
 
 if EXPERIMENT == "lunarlander":
     encoder_list = [
@@ -104,7 +104,7 @@ elif EXPERIMENT == "svhn":
     )
     encoder_test, _ = read_svhn_data("svhn/test_32x32.mat")
     encoder_test = {"imgs" : encoder_test}
-    encoder_test, = dict_to_batches(
+    encoder_test = dict_to_batches(
         encoder_test,
         data_size=len(encoder_test["imgs"]),
         batch_size=500,
@@ -158,8 +158,8 @@ for encoder, _ in encoder_list:
         loss = loss,
         optimizer = optimizer
     )
-    l1_loss = l1_loss/len(encoder_test[0])
-    mse_loss = mse_loss/len(encoder_test[0])
+    l1_loss = l1_loss/len(encoder_test[0]["imgs"])
+    mse_loss = mse_loss/len(encoder_test[0]["imgs"])
 
     experiment_data['experiment'].append(EXPERIMENT)
     experiment_data['encoder_file'].append(encoder),

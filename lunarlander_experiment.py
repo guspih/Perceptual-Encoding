@@ -78,7 +78,7 @@ def run_lunarlander_experiment(
         regressor.cuda()
 
     train_data, val_data, test_data = load_npz_data(
-        REGRESSOR_DATA_PATH, data_size, batch_size, [0.6, 0.2, 0.2]
+        REGRESSOR_DATA_PATH, data_size, batch_size, [0.64, 0.16, 0.2]
     )
 
     encoder.eval()

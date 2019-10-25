@@ -9,12 +9,14 @@ import os
 import csv
 import sys
 from itertools import combinations_with_replacement, product
-from networks import FourLayerCVAE, PrintLogger, AlexNet
+from networks import FourLayerCVAE, PrintLogger, AlexNet, ShallowDecoderCVAE
 from networks import run_epoch, run_training, dense_net
 from networks_test import train_autoencoder, dict_to_batches, load_npz_data
 from lunarlander_experiment import run_lunarlander_experiment
 from stl10_test import stl10_experiment, read_stl_images, read_stl_labels
 from svhn_test import svhn_experiment, read_svhn_data
+
+NETWORK = ShallowDecoderCVAE#FourLayerCVAE
 
 def generate_dense_architectures(hidden_sizes, hidden_nrs):
     '''
@@ -102,7 +104,7 @@ def grid_search(
     ):
         variational = gamma != 0
         _, model_path = train_autoencoder(
-            encoder_data, FourLayerCVAE, encoder_epochs, input_size,
+            encoder_data, NETWORK, encoder_epochs, input_size,
             z_dim, variational, gamma, perceptual,
             gpu, False, save_path, False
         )
@@ -160,4 +162,4 @@ def grid_search(
         f.write(str(results))
 
 if __name__ == "__main__":
-    grid_search(experiment="svhn", predictor_out_func=[None, nn.Softmax])
+    grid_search(experiment="lunarlander", predictor_out_func=[None])

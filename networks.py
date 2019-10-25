@@ -318,6 +318,66 @@ class FourLayerCVAE(nn.Module):
         else:
             return [REC]
 
+class ShallowDecoderCVAE(FourLayerCVAE):
+    '''
+    A Convolutional Variational Autoencoder for images with a shallow decoder
+    
+    Args:
+        input_size (int,int): The height and width of the input image
+            acceptable sizes are 64+16*n
+        z_dimensions (int): The number of latent dimensions in the encoding
+        variational (bool): Whether the model is variational or not
+        gamma (float): The weight of the KLD loss
+        perceptual_loss: Whether to use pixelwise or AlexNet for recon loss
+    '''
+
+    def __init__(self, input_size=(64,64), z_dimensions=32,
+        variational=True, gamma=20.0, perceptual_loss=False
+    ):
+        super(FourLayerCVAE, self).__init__()
+
+        #Parameter check
+        if (input_size[0] - 64) % 16 != 0 or (input_size[1] - 64) % 16 != 0:
+            raise ValueError(
+                "Input_size is {}, but must be 64+16*N".format(input_size)
+            )
+
+        #Attributes
+        self.input_size = input_size
+        self.z_dimensions = z_dimensions
+        self.variational = variational
+        self.gamma = gamma
+        self.perceptual_loss = perceptual_loss
+
+        if perceptual_loss:
+            self.alexnet = AlexNet(sigmoid_out=True)
+        
+        encoder_channels = [3,32,64,126,256]
+
+        self.encoder = _create_coder(
+            [3,32,64,126,256], [4,4,4,4], [2,2,2,2],
+            nn.Conv2d, nn.ReLU,
+            batch_norms=[True,True,True,True]
+        )
+        
+        f = lambda x: np.floor((x - (2,2))/2)
+        conv_sizes = f(f(f(f(np.array(input_size)))))
+        conv_flat_size = int(encoder_channels[-1]*conv_sizes[0]*conv_sizes[1])
+        self.mu = nn.Linear(conv_flat_size, self.z_dimensions)
+        self.logvar = nn.Linear(conv_flat_size, self.z_dimensions)
+
+        g = lambda x: int((x-64)/16)+1
+        deconv_flat_size = g(input_size[0]) * g(input_size[1]) * 1024
+        self.dense = nn.Linear(self.z_dimensions, deconv_flat_size)
+
+        self.decoder = _create_coder(
+            [1024,64,48,32,3], [5,5,6,6], [2,2,2,2],
+            nn.ConvTranspose2d,
+            [nn.ReLU,nn.ReLU,nn.ReLU,nn.Sigmoid],
+            batch_norms=[True,True,True,False]
+        )
+
+        self.relu = nn.ReLU()
 
 class AlexNet(nn.Module):
     '''
@@ -395,8 +455,16 @@ if __name__ == "__main__":
         gamma=0,
         perceptual_loss=False
     )
+    shallow64 = ShallowDecoderCVAE(
+        input_size=(64,64),
+        z_dimensions=32,
+        variational=False,
+        gamma=0,
+        perceptual_loss=False
+    )
     alexnet = AlexNet()
     summary(model64, (3,64,64))
     summary(model96, (3,96,96))
     summary(alexnet, (3,64,64))
     summary(alexnet, (3,96,96))
+    summary(shallow64, (3,64,64))
