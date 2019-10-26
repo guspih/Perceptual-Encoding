@@ -155,7 +155,7 @@ def grid_search(
             hidden_func, 
             out_func
         )] = experiment_data
-        with open('gridsearch_' + experiment_data + '.csv', 'a+') as f:
+        with open('gridsearch_' + experiment + '.csv', 'a+') as f:
             writer = csv.writer(f, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerow([encoder_path, z_dim, gamma, perceptual, variational, tuple(architecture), hidden_func, out_func] + experiment_data.values())
     #Store the results
