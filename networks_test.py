@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import random
-from networks import FourLayerCVAE, run_epoch, run_training
+from networks import FourLayerCVAE, run_epoch, run_training, EarlyStopper
 import math
 import datetime
 import os
@@ -202,11 +202,12 @@ def train_autoencoder(data, network, epochs, input_size=(64,64),
             p.requires_grad=True
     optimizer = torch.optim.Adam(model.parameters())
 
-    epoch_update = None
+    early_stop = EarlyStopper(patience=10)
+    epoch_update = early_stop
     if display:
         epoch_update = lambda _a, _b, _c : show_recreation(
                 train_data, model, block=False, save=save_path+"/image.png"
-            ) and False
+            ) or early_stop(_a,_b,_c)
 
     if epochs != 0:
         print(

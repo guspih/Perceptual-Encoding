@@ -102,7 +102,8 @@ def run_lunarlander_experiment(
     optimizer = torch.optim.Adam(regressor.parameters())
     loss_function = torch.nn.MSELoss()
     loss_functions = lambda output, target : [loss_function(output, target)]
-
+    early_stop = EarlyStopper(patience=20)
+    
     if epochs != 0:
         regressor, regressor_file, val_loss = run_training(
             model = regressor,
@@ -112,7 +113,7 @@ def run_lunarlander_experiment(
             optimizer = optimizer,
             save_path = save_path,
             epochs = epochs,
-            epoch_update = EarlyStopper(patience=20)
+            epoch_update = early_stop
         )
 
     experiment_data["regressor_file"] = regressor_file
