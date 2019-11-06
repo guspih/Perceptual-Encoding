@@ -8,7 +8,7 @@ import csv
 import os
 import sys
 
-from networks import FourLayerCVAE, PrintLogger
+from networks import FourLayerCVAE, PrintLogger, EarlyStopper
 from networks import dense_net, run_epoch, run_training
 from networks_test import load_npz_data, train_autoencoder
 
@@ -112,7 +112,7 @@ def run_lunarlander_experiment(
             optimizer = optimizer,
             save_path = save_path,
             epochs = epochs,
-            epoch_update = None
+            epoch_update = EarlyStopper(patience=20)
         )
 
     experiment_data["regressor_file"] = regressor_file

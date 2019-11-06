@@ -132,7 +132,7 @@ def run_training(model, train_data, val_data, loss,
         save_path (str): Path to folder where the model will be stored
         epochs (int): Number of epochs to train for
         epoch_update (f(epoch, train_loss, val_loss) -> bool): Function to run
-            at the end of a epoch. Returns whether to early stop
+            at the end of each epoch. Returns whether to early stop
 
     Returns (nn.Module, str, float): The model, filepath, and validation loss
     '''
@@ -168,6 +168,28 @@ def run_training(model, train_data, val_data, loss,
 
     model = torch.load(save_file)
     return model, save_file, best_validation_loss
+
+class EarlyStopper():
+    '''
+    An implementation of Early stopping for run_training
+    Args:
+        patience (int): How many epochs without progress until stopping early
+    '''
+    
+    def __init__(self, patience=20):
+        self.patience = patience
+        self.current_patience = patience
+        self.best_loss = 99999999999999
+    
+    def __call__(self, epoch, train_losses, val_losses):
+        if val_losses[0] < self.best_loss:
+            self.best_loss = val_losses[0]
+            self.current_patience = self.patience
+        else:
+            self.current_patience -= 1
+            if self.current_patience == 0:
+                return True
+        return False
 
 class PrintLogger():
     '''
@@ -334,7 +356,7 @@ class ShallowDecoderCVAE(FourLayerCVAE):
     def __init__(self, input_size=(64,64), z_dimensions=32,
         variational=True, gamma=20.0, perceptual_loss=False
     ):
-        super(FourLayerCVAE, self).__init__()
+        super(ShallowDecoderCVAE, self).__init__()
 
         #Parameter check
         if (input_size[0] - 64) % 16 != 0 or (input_size[1] - 64) % 16 != 0:
@@ -371,13 +393,98 @@ class ShallowDecoderCVAE(FourLayerCVAE):
         self.dense = nn.Linear(self.z_dimensions, deconv_flat_size)
 
         self.decoder = _create_coder(
-            [1024,64,48,32,3], [5,5,6,6], [2,2,2,2],
+            [1024,48,32,16,3], [5,5,6,6], [2,2,2,2],
             nn.ConvTranspose2d,
             [nn.ReLU,nn.ReLU,nn.ReLU,nn.Sigmoid],
             batch_norms=[True,True,True,False]
         )
 
         self.relu = nn.ReLU()
+
+class LoopingCVAE(FourLayerCVAE):
+    '''
+    A Convolutional Variational Autoencoder for images
+    
+    Args:
+        input_size (int,int): The height and width of the input image
+            acceptable sizes are 64+16*n
+        z_dimensions (int): The number of latent dimensions in the encoding
+        variational (bool): Whether the model is variational or not
+        gamma (float): The weight of the KLD loss
+        perceptual_loss: Whether to use pixelwise or AlexNet for recon loss
+    '''
+
+    def __init__(self, input_size=(64,64), z_dimensions=32,
+        variational=True, gamma=20.0
+    ):
+        super(LoopingCVAE, self).__init__()
+
+        #Parameter check
+        if (input_size[0] - 64) % 16 != 0 or (input_size[1] - 64) % 16 != 0:
+            raise ValueError(
+                "Input_size is {}, but must be 64+16*N".format(input_size)
+            )
+
+        #Attributes
+        self.input_size = input_size
+        self.z_dimensions = z_dimensions
+        self.variational = variational
+        self.gamma = gamma
+        
+        encoder_channels = [3,32,64,126,256]
+
+        self.encoder = _create_coder(
+            [3,32,64,126,256], [4,4,4,4], [2,2,2,2],
+            nn.Conv2d, nn.ReLU,
+            batch_norms=[True,True,True,True]
+        )
+        
+        f = lambda x: np.floor((x - (2,2))/2)
+        conv_sizes = f(f(f(f(np.array(input_size)))))
+        conv_flat_size = int(encoder_channels[-1]*conv_sizes[0]*conv_sizes[1])
+        self.mu = nn.Linear(conv_flat_size, self.z_dimensions)
+        self.logvar = nn.Linear(conv_flat_size, self.z_dimensions)
+
+        g = lambda x: int((x-64)/16)+1
+        deconv_flat_size = g(input_size[0]) * g(input_size[1]) * 1024
+        self.dense = nn.Linear(self.z_dimensions, deconv_flat_size)
+
+        self.decoder = _create_coder(
+            [1024,128,64,32,3], [5,5,6,6], [2,2,2,2],
+            nn.ConvTranspose2d,
+            [nn.ReLU,nn.ReLU,nn.ReLU,nn.Sigmoid],
+            batch_norms=[True,True,True,False]
+        )
+
+        self.relu = nn.ReLU()
+    
+    def loss(self, output, x):
+        rec_x, z, mu, logvar = output
+
+        x = x.reshape(-1, self.input_size[0] * self.input_size[1] * 3)
+        rec_x = rec_x.view(-1, self.input_size[0] * self.input_size[1] * 3)
+        REC_ENCODER = F.mse_loss(rec_x, x, reduction='mean')
+
+        mu2 = mu.detach()
+        rec_mu, rec_logvar = self.encode(self.decode(mu2))
+        REC_DECODER = F.mse_loss(rec_mu, mu2, reduction='mean')
+
+        if self.variational:
+            KLD = -1 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+            REC_ENCODER = REC_ENCODER + self.gamma*KLD
+
+        return REC_ENCODER, REC_DECODER
+    
+    def optimizer(self):
+        encoder_optimizer = torch.optim.Adam(
+            self.encoder.parameters() +
+            self.mu.parameters() +
+            self.logvar.parameters()
+        )
+        decoder_optimizer = torch.optim.Adam(
+            self.decoder.parameters() +
+            self.dense.parameters()
+        )
 
 class AlexNet(nn.Module):
     '''
@@ -408,6 +515,22 @@ class AlexNet(nn.Module):
     def encode(self, x):
         y = self.forward(x)
         return y, torch.zeros(y.size())
+
+class MultiOptimizer(object):
+    '''
+    An optimizer that simply runs multiple internal
+    optimizers with different losses
+    '''
+
+    def _init_(self, *op):
+        self.optimizers = op
+    
+    def zero_grad(self):
+        [op.zero_grad() for op in self.optimizers]
+
+    def step(self):
+        for op in self.optimizers:
+            op.step()
 
 def dense_net(input_size, layers, activation_functions):
     '''

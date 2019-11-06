@@ -17,6 +17,18 @@ from stl10_test import stl10_experiment, read_stl_images, read_stl_labels
 from svhn_test import svhn_experiment, read_svhn_data
 
 NETWORK = ShallowDecoderCVAE#FourLayerCVAE
+EXHAUSTIVE_ARCHITECTURES = False
+
+def prebuilt_dense_architectures():
+    '''
+    Returns a collection of predefined architectures to test.
+    Returns ([[int]]): List of architectures consisting of list of layer sizes
+    '''
+    architectures = [
+        [], [32], [64], [32,32], [64,32], [64,64], [128,128]
+    ]
+    return architectures
+
 
 def generate_dense_architectures(hidden_sizes, hidden_nrs):
     '''
@@ -127,10 +139,13 @@ def grid_search(
 
     # Run all experiment permutation with all different encoders
     results = {}
-    architectures = generate_dense_architectures(
-        predictor_hidden_sizes,
-        predictor_hidden_nrs
-    )
+    if EXHAUSTIVE_ARCHITECTURES:
+        architectures = generate_dense_architectures(
+            predictor_hidden_sizes,
+            predictor_hidden_nrs
+        )
+    else:
+        architectures = prebuilt_dense_architectures()
     for encoder_etc, architecture, hidden_func, out_func in product(
         encoders_etc, architectures, predictor_hidden_funcs, predictor_out_func
     ):
