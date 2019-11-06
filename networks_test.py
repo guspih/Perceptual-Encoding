@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import random
-from networks import FourLayerCVAE, run_epoch, run_training, EarlyStopper
+from networks import FourLayerCVAE, run_epoch, run_training, EarlyStopper, LoopingCVAE
 import math
 import datetime
 import os
@@ -200,7 +200,10 @@ def train_autoencoder(data, network, epochs, input_size=(64,64),
             p.requires_grad=True
         for p in model.logvar.parameters():
             p.requires_grad=True
-    optimizer = torch.optim.Adam(model.parameters())
+    if isinstance(model, LoopingCVAE):
+        optimizer = model.optimizer()
+    else:
+        optimizer = torch.optim.Adam(model.parameters())
 
     early_stop = EarlyStopper(patience=10)
     epoch_update = early_stop

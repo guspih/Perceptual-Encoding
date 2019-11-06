@@ -103,9 +103,13 @@ def run_epoch(network, data, labels, loss, optimizer,
             epoch_losses = [
                 epoch_losses[i] + losses[i].item() for i in range(len(losses))
             ]
-        losses[0].backward()
-        if train:
-            optimizer.step()
+        
+        if isinstance(optimizer, MultiOptimizer):
+            optimizer.optimize(losses)
+        else:
+            losses[0].backward()
+            if train:
+                optimizer.step()
         print(
             "\r{} - [{}/{}] - Losses: {}, Time passed: {}s".format(
                 epoch_name, batch_id+1, len(batches),
@@ -485,6 +489,7 @@ class LoopingCVAE(FourLayerCVAE):
             self.decoder.parameters() +
             self.dense.parameters()
         )
+        return MultiOptimizer(encoder_optimizer, decoder_optimizer)
 
 class AlexNet(nn.Module):
     '''
@@ -531,6 +536,12 @@ class MultiOptimizer(object):
     def step(self):
         for op in self.optimizers:
             op.step()
+    
+    def optimize(self, losses):
+        for i, op in enumerate(self.optimizers):
+            losses[i].backward()
+            op.step()
+            op.zero_grad()
 
 def dense_net(input_size, layers, activation_functions):
     '''
