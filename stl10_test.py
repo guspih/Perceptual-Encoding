@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import random
-from networks import FourLayerCVAE, PrintLogger
+from networks import FourLayerCVAE, PrintLogger, EarlyStopper, ShallowDecoderCVAE
 from networks import run_epoch, run_training, dense_net
 from networks_test import train_autoencoder, dict_to_batches
 import math
@@ -164,6 +164,7 @@ def stl10_experiment(
     optimizer = torch.optim.Adam(classifier.parameters())
     loss_function = torch.nn.MSELoss()
     loss_functions = lambda output, target : [loss_function(output, target)]
+    early_stop = EarlyStopper(patience=20)
 
     # Train classifier
     if epochs != 0:
@@ -174,7 +175,7 @@ def stl10_experiment(
             loss = loss_functions,
             optimizer = optimizer,
             save_path = save_path,
-            epochs = epochs
+            epochs = early_stop
         )
     
     # Test classifier

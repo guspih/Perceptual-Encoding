@@ -481,15 +481,15 @@ class LoopingCVAE(FourLayerCVAE):
     
     def optimizer(self):
         encoder_optimizer = torch.optim.Adam(
-            self.encoder.parameters() +
-            self.mu.parameters() +
-            self.logvar.parameters()
+            list(self.encoder.parameters()) +
+            list(self.mu.parameters()) +
+            list(self.logvar.parameters())
         )
         decoder_optimizer = torch.optim.Adam(
-            self.decoder.parameters() +
-            self.dense.parameters()
+            list(self.decoder.parameters()) +
+            list(self.dense.parameters())
         )
-        return MultiOptimizer(encoder_optimizer, decoder_optimizer)
+        return MultiOptimizer([encoder_optimizer, decoder_optimizer])
 
 class AlexNet(nn.Module):
     '''
@@ -527,8 +527,8 @@ class MultiOptimizer(object):
     optimizers with different losses
     '''
 
-    def _init_(self, *op):
-        self.optimizers = op
+    def __init__(self, optimizers):
+        self.optimizers = optimizers
     
     def zero_grad(self):
         [op.zero_grad() for op in self.optimizers]
