@@ -362,7 +362,7 @@ class ShallowDecoderCVAE(FourLayerCVAE):
     '''
 
     def __init__(self, input_size=(64,64), z_dimensions=32,
-        variational=True, gamma=20.0, perceptual_loss=False
+        variational=True, gamma=20.0, perceptual_loss=False, perceptual_net=None
     ):
         super(ShallowDecoderCVAE, self).__init__()
 
@@ -423,7 +423,7 @@ class LoopingCVAE(FourLayerCVAE):
     '''
 
     def __init__(self, input_size=(64,64), z_dimensions=32,
-        variational=True, gamma=20.0, perceptual_loss=False
+        variational=True, gamma=20.0, perceptual_loss=False, perceptual_net=None
     ):
         super(LoopingCVAE, self).__init__()
 
@@ -470,14 +470,14 @@ class LoopingCVAE(FourLayerCVAE):
     def loss(self, output, x):
         rec_x, z, mu, logvar = output
 
-        x = x.reshape(-1, self.input_size[0] * self.input_size[1] * 3)
+        x_comp = x.reshape(-1, self.input_size[0] * self.input_size[1] * 3)
         rec_x = rec_x.view(-1, self.input_size[0] * self.input_size[1] * 3)
-        REC_ENCODER = F.mse_loss(rec_x, x, reduction='mean')
+        REC_ENCODER = F.mse_loss(rec_x, x_comp, reduction='mean')
 
         mu2 = mu.detach()
         if self.perceptual_loss:
-            features = self.encoder[-5](x)
-            rec_features = self.encoder[-5](self.decode(mu2))
+            features = self.encoder[:-5](x)
+            rec_features = self.encoder[:-5](self.decode(mu2))
             REC_DECODER = F.mse_loss(rec_features, features, reduction='mean')
         else:
             rec_mu, rec_logvar = self.encode(self.decode(mu2))
@@ -557,6 +557,8 @@ class PerceptualNet(nn.Module):
             nn.ReLU(),
             nn.Linear(256, n_classes)
         )
+
+        self.layer = layer
         
         train_data, _ = data
         train_data = train_data["imgs"]
@@ -574,7 +576,7 @@ class PerceptualNet(nn.Module):
             )
 
     def forward(self, x):
-        x = self.features[:layer](x)
+        x = self.features[:self.layer](x)
         x = x.view(x.size(0), -1)
         return x
     

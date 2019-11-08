@@ -9,7 +9,7 @@ import os
 import csv
 import sys
 from itertools import combinations_with_replacement, product
-from networks import FourLayerCVAE, PrintLogger, AlexNet, ShallowDecoderCVAE
+from networks import FourLayerCVAE, PrintLogger, AlexNet, ShallowDecoderCVAE, PerceptualNet
 from networks import run_epoch, run_training, dense_net
 from networks_test import train_autoencoder, dict_to_batches, load_npz_data
 from lunarlander_experiment import run_lunarlander_experiment
@@ -18,6 +18,7 @@ from svhn_test import svhn_experiment, read_svhn_data
 
 NETWORK = ShallowDecoderCVAE#FourLayerCVAE
 EXHAUSTIVE_ARCHITECTURES = False
+PERCEPTUAL_NET = True
 
 def prebuilt_dense_architectures():
     '''
@@ -114,11 +115,15 @@ def grid_search(
     for z_dim, gamma, perceptual in product(
         z_dims, gammas, [False, True]
     ):
+        if perceptual and PERCEPTUAL_NET:
+            perceptual_network = PerceptualNet(encoder_data,input_size)
+        else:
+            perceptual_network = None
         variational = gamma != 0
         _, model_path = train_autoencoder(
             encoder_data, NETWORK, encoder_epochs, input_size,
             z_dim, variational, gamma, perceptual,
-            gpu, False, save_path, False
+            gpu, False, save_path, False, perceptual_network
         )
         encoders_etc.append((model_path, z_dim, gamma, perceptual, variational))
     

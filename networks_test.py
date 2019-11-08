@@ -142,7 +142,7 @@ def load_npz_data(data_file, data_size, batch_size,
 def train_autoencoder(data, network, epochs, input_size=(64,64),
     z_dimensions=32, variational=False, gamma=0.001, perceptual_loss=False,
     gpu=False, display=False, save_path="autoencoder_checkpoints",
-    train_only_decoder=False
+    train_only_decoder=False, perceptual_net=None
 ):
     '''
     Trains an image autoencoder with data in dicts with images in key "imgs"
@@ -182,6 +182,7 @@ def train_autoencoder(data, network, epochs, input_size=(64,64),
             variational=variational,
             gamma=gamma,
             perceptual_loss=perceptual_loss
+            perceptual_net=perceptual_net
         )
     if gpu:
         model = model.cuda()
