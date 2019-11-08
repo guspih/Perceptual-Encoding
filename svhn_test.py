@@ -162,7 +162,8 @@ def svhn_experiment(
             loss = loss_functions,
             optimizer = optimizer,
             save_path = save_path,
-            epochs = early_stop
+            epochs = epochs,
+            epoch_update = early_stop
         )
     
     # Test classifier

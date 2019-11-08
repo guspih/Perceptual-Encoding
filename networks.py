@@ -229,11 +229,12 @@ class FourLayerCVAE(nn.Module):
         z_dimensions (int): The number of latent dimensions in the encoding
         variational (bool): Whether the model is variational or not
         gamma (float): The weight of the KLD loss
-        perceptual_loss: Whether to use pixelwise or AlexNet for recon loss
+        perceptual_loss: Whether to use pixelwise or perceptual for recon loss
+        perceptual_net: Network to use for perceptua loss (AlexNet if None)
     '''
 
-    def __init__(self, input_size=(64,64), z_dimensions=32,
-        variational=True, gamma=20.0, perceptual_loss=False
+    def __init__(self, input_size=(64,64), z_dimensions=32, variational=True,
+        gamma=20.0, perceptual_loss=False, perceptual_net=None
     ):
         super(FourLayerCVAE, self).__init__()
 
@@ -251,12 +252,15 @@ class FourLayerCVAE(nn.Module):
         self.perceptual_loss = perceptual_loss
 
         if perceptual_loss:
-            self.alexnet = AlexNet(sigmoid_out=True)
+            if perceptual_net is None:
+                self.alexnet = AlexNet(sigmoid_out=True)
+            else:
+                self.alexnet = perceptual_net
         
-        encoder_channels = [3,32,64,126,256]
+        encoder_channels = [3,32,64,128,256]
 
         self.encoder = _create_coder(
-            [3,32,64,126,256], [4,4,4,4], [2,2,2,2],
+            [3,32,64,128,256], [4,4,4,4], [2,2,2,2],
             nn.Conv2d, nn.ReLU,
             batch_norms=[True,True,True,True]
         )
@@ -378,10 +382,10 @@ class ShallowDecoderCVAE(FourLayerCVAE):
         if perceptual_loss:
             self.alexnet = AlexNet(sigmoid_out=True)
         
-        encoder_channels = [3,32,64,126,256]
+        encoder_channels = [3,32,64,128,256]
 
         self.encoder = _create_coder(
-            [3,32,64,126,256], [4,4,4,4], [2,2,2,2],
+            [3,32,64,128,256], [4,4,4,4], [2,2,2,2],
             nn.Conv2d, nn.ReLU,
             batch_norms=[True,True,True,True]
         )
@@ -419,7 +423,7 @@ class LoopingCVAE(FourLayerCVAE):
     '''
 
     def __init__(self, input_size=(64,64), z_dimensions=32,
-        variational=True, gamma=20.0
+        variational=True, gamma=20.0, perceptual_loss=False
     ):
         super(LoopingCVAE, self).__init__()
 
@@ -434,11 +438,12 @@ class LoopingCVAE(FourLayerCVAE):
         self.z_dimensions = z_dimensions
         self.variational = variational
         self.gamma = gamma
+        self.perceptual_loss = perceptual_loss
         
-        encoder_channels = [3,32,64,126,256]
+        encoder_channels = [3,32,64,128,256]
 
         self.encoder = _create_coder(
-            [3,32,64,126,256], [4,4,4,4], [2,2,2,2],
+            [3,32,64,128,256], [4,4,4,4], [2,2,2,2],
             nn.Conv2d, nn.ReLU,
             batch_norms=[True,True,True,True]
         )
@@ -470,8 +475,13 @@ class LoopingCVAE(FourLayerCVAE):
         REC_ENCODER = F.mse_loss(rec_x, x, reduction='mean')
 
         mu2 = mu.detach()
-        rec_mu, rec_logvar = self.encode(self.decode(mu2))
-        REC_DECODER = F.mse_loss(rec_mu, mu2, reduction='mean')
+        if self.perceptual_loss:
+            features = self.encoder[-5](x)
+            rec_features = self.encoder[-5](self.decode(mu2))
+            REC_DECODER = F.mse_loss(rec_features, features, reduction='mean')
+        else:
+            rec_mu, rec_logvar = self.encode(self.decode(mu2))
+            REC_DECODER = F.mse_loss(rec_mu, mu2, reduction='mean')
 
         if self.variational:
             KLD = -1 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
@@ -520,6 +530,59 @@ class AlexNet(nn.Module):
     def encode(self, x):
         y = self.forward(x)
         return y, torch.zeros(y.size())
+
+class PerceptualNet(nn.Module):
+    '''
+    A network that will be trained to classify random groupings
+    of the given data, that can then be used for perceptual loss.
+    Args:
+        data ([{train},{validation}]): Batched dicts with images in key "imgs"
+        input_size (int, int): height and width of input images
+    '''
+
+    def __init__(self, data, input_size=(64,64), n_classes=32, layer=5):
+        encoder_channels = [3,32,64,128,256]
+        self.features = _create_coder(
+            encoder_channels, [4,4,4,4], [2,2,2,2],
+            nn.Conv2d, nn.ReLU,
+            batch_norms=[True,True,True,True]
+        )
+        f = lambda x: np.floor((x - (2,2))/2)
+        conv_sizes = f(f(f(f(np.array(input_size)))))
+        conv_flat_size = int(encoder_channels[-1]*conv_sizes[0]*conv_sizes[1])
+        self.predictor = nn.Sequential(
+            self.features(),
+            torch.nn.Flatten(),
+            nn.Linear(conv_flat_size, 256),
+            nn.ReLU(),
+            nn.Linear(256, n_classes)
+        )
+        
+        train_data, _ = data
+        train_data = train_data["imgs"]
+        labels = []
+        for batch in data:
+            label = torch.randint(0, n_classes, batch.size(0))
+            labels.append(label)
+        loss = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters())
+        epochs = 50
+        for epoch in range(epochs):
+            run_epoch(
+                self.predictor, train_data, labels, loss,optimizer,
+                epoch_name="Pre-training {}".format(epoch), train=True
+            )
+
+    def forward(self, x):
+        x = self.features[:layer](x)
+        x = x.view(x.size(0), -1)
+        return x
+    
+    def encode(self, x):
+        y = self.forward(x)
+        return y, torch.zeros(y.size())
+
+
 
 class MultiOptimizer(object):
     '''
