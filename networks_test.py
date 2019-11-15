@@ -181,7 +181,7 @@ def train_autoencoder(data, network, epochs, input_size=(64,64),
             z_dimensions=z_dimensions,
             variational=variational,
             gamma=gamma,
-            perceptual_loss=perceptual_loss
+            perceptual_loss=perceptual_loss,
             perceptual_net=perceptual_net
         )
     if gpu:

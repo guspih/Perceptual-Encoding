@@ -501,6 +501,63 @@ class LoopingCVAE(FourLayerCVAE):
         )
         return MultiOptimizer([encoder_optimizer, decoder_optimizer])
 
+class AlexNetAutoencoder(FourLayerCVAE):
+    '''
+    An autoencoder based on extracting from alexnet, encoding, and
+    then decoding back to the extraction again.
+    Args:
+        input_size (int,int): The height and width of the input image
+            acceptable sizes are 64+16*n
+        z_dimensions (int): The number of latent dimensions in the encoding
+        variational (bool): Whether the model is variational or not
+        gamma (float): The weight of the KLD loss
+        perceptual_loss: Unused
+        perceptual_net: Unused
+    '''
+
+    def __init__(self, input_size=(64,64), z_dimensions=32, variational=True,
+        gamma=20.0, perceptual_loss=None, perceptual_net=None
+    ):
+        super(AlexNetAutoencoder, self).__init__()
+
+        self.input_size = input_size
+        self.z_dimensions = z_dimensions
+        self.variational = variational
+        self.gamma = gamma
+        self.perceptual_loss = False
+        self.perceptual_net = None
+
+        self.alexnet = AlexNet(layer=6, frozen=True, sigmoid_out=True)
+        test_y = alexnet(torch.randn(1,3,input_size[0], input_size[1]))
+        self.feature_size = test_y.size()[1]
+
+        self.encoder = nn.Sequential(
+            self.alexnet,
+            nn.Linear(self.feature_size, 1024),
+            nn.ReLU()
+        )
+        self.mu = nn.Linear(1024, self.z_dimensions)
+        self.logvar = nn.Linear(1024, self.z_dimensions)
+        self.dense = nn.Linear(self.z_dimensions, 1024)
+        self.decoder = nn.Sequential(
+            nn.Linear(1024,self.feature_size),
+            nn.Sigmoid()
+        )
+
+    def loss(self, output, x):
+        rec_x, z, mu, logvar = output
+        
+        x = self.alexnet(x)
+        REC = F.mse_loss(rec_x, x, reduction='mean')
+
+        if self.variational:
+            KLD = -1 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+            return REC + self.gamma*KLD, REC, KLD
+        else:
+            return [REC]
+
+        
+
 class AlexNet(nn.Module):
     '''
     The first layers of Torchvision's pretrained AlexNet
@@ -541,6 +598,8 @@ class PerceptualNet(nn.Module):
     '''
 
     def __init__(self, data, input_size=(64,64), n_classes=32, layer=5):
+        super(PerceptualNet, self).__init__()
+        
         encoder_channels = [3,32,64,128,256]
         self.features = _create_coder(
             encoder_channels, [4,4,4,4], [2,2,2,2],
@@ -551,7 +610,7 @@ class PerceptualNet(nn.Module):
         conv_sizes = f(f(f(f(np.array(input_size)))))
         conv_flat_size = int(encoder_channels[-1]*conv_sizes[0]*conv_sizes[1])
         self.predictor = nn.Sequential(
-            self.features(),
+            self.features,
             torch.nn.Flatten(),
             nn.Linear(conv_flat_size, 256),
             nn.ReLU(),
@@ -563,17 +622,20 @@ class PerceptualNet(nn.Module):
         train_data, _ = data
         train_data = train_data["imgs"]
         labels = []
-        for batch in data:
-            label = torch.randint(0, n_classes, batch.size(0))
+        for batch in train_data:
+            label = torch.randint(0, n_classes, [batch.size(0)])
             labels.append(label)
         loss = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(model.parameters())
+        losses = lambda a, b: [loss(a,b)]
+        optimizer = torch.optim.Adam(self.predictor.parameters())
         epochs = 50
         for epoch in range(epochs):
             run_epoch(
-                self.predictor, train_data, labels, loss,optimizer,
+                self.predictor, train_data, labels, losses, optimizer,
                 epoch_name="Pre-training {}".format(epoch), train=True
             )
+        for param in self.features.parameters():
+            param.requires_grad = False
 
     def forward(self, x):
         x = self.features[:self.layer](x)
