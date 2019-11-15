@@ -9,6 +9,7 @@ import datetime
 import time
 import sys
 import os
+from sklearn.cluster import SpectralClustering
 
 
 def _create_coder(channels, kernel_sizes, strides, conv_types,
@@ -528,7 +529,7 @@ class AlexNetAutoencoder(FourLayerCVAE):
         self.perceptual_net = None
 
         self.alexnet = AlexNet(layer=6, frozen=True, sigmoid_out=True)
-        test_y = alexnet(torch.randn(1,3,input_size[0], input_size[1]))
+        test_y = self.alexnet(torch.randn(1,3,input_size[0], input_size[1]))
         self.feature_size = test_y.size()[1]
 
         self.encoder = nn.Sequential(
@@ -543,6 +544,13 @@ class AlexNetAutoencoder(FourLayerCVAE):
             nn.Linear(1024,self.feature_size),
             nn.Sigmoid()
         )
+        self.relu = ReLU()
+
+    def decode(self, z):
+        y = self.dense(z)
+        y = self.relu(y)
+        y = self.decoder(y)
+        return y
 
     def loss(self, output, x):
         rec_x, z, mu, logvar = output
@@ -623,8 +631,10 @@ class PerceptualNet(nn.Module):
         train_data = train_data["imgs"]
         labels = []
         for batch in train_data:
-            label = torch.randint(0, n_classes, [batch.size(0)])
-            labels.append(label)
+            clustering = SpectralClustering(
+                n_clusters=n_classes, assign_labels="discretize",random_state=0
+            ).fit(batch)
+            labels.append(clustering.labels_)
         loss = nn.CrossEntropyLoss()
         losses = lambda a, b: [loss(a,b)]
         optimizer = torch.optim.Adam(self.predictor.parameters())
