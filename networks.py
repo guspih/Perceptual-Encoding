@@ -629,14 +629,15 @@ class PerceptualNet(nn.Module):
         self.layer = layer
         
         train_data, _ = data
-        train_data = train_data["imgs"]
-        labels = []
-        for batch in train_data:
-            x = batch.numpy()
-            x = np.reshape(x, (-1, input_size[0]*input_size[1]*3))
-            x = TSNE().fit_transform(x)
-            clustering = KMeans(n_clusters=n_classes).fit(x)
-            labels.append(clustering.labels_)
+        train_data = train_data["imgs"]   
+
+        x = torch.cat(train_data, dim=0).numpy()
+        x = np.reshape(x, (-1, input_size[0]*input_size[1]*3))
+        x = TSNE().fit_transform(x)
+        clustering = KMeans(n_clusters=n_classes).fit(x)
+        labels = clustering.labels_
+        labels = split(labels, len(labels)/len(next(iter(train_data))))
+        labels = [torch.Tensor(label).long() for label in labels]
         loss = nn.CrossEntropyLoss()
         losses = lambda a, b: [loss(a,b)]
         optimizer = torch.optim.Adam(self.predictor.parameters())
