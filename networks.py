@@ -9,7 +9,8 @@ import datetime
 import time
 import sys
 import os
-from sklearn.cluster import SpectralClustering
+from sklearn.cluster import SpectralClustering, KMeans
+from sklearn.manifold import TSNE
 
 
 def _create_coder(channels, kernel_sizes, strides, conv_types,
@@ -631,9 +632,10 @@ class PerceptualNet(nn.Module):
         train_data = train_data["imgs"]
         labels = []
         for batch in train_data:
-            clustering = SpectralClustering(
-                n_clusters=n_classes, assign_labels="discretize",random_state=0
-            ).fit(batch)
+            x = batch.numpy()
+            x = np.reshape(x, (-1, input_size[0]*input_size[1]*3))
+            x = TSNE().fit_transform(x)
+            clustering = KMeans(n_clusters=n_classes).fit(x)
             labels.append(clustering.labels_)
         loss = nn.CrossEntropyLoss()
         losses = lambda a, b: [loss(a,b)]
